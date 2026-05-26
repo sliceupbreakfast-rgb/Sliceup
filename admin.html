@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SliceUp Admin Paneli</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,700;1,400;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="admin-page">
+  <main class="admin-shell admin-shell-wide">
+    <section class="admin-login-card" id="admin-login-card">
+      <img src="logo.jpg" alt="SliceUp Breakfast Logo" class="admin-logo">
+      <h1>Admin Paneli</h1>
+      <p>Menü görünümünü kullanarak ürünleri, görselleri, alerjenleri ve ekstraları düzenleyin.</p>
+      <form id="admin-login-form" class="admin-panel-form">
+        <label>
+          E-posta / kullanıcı adı
+          <input type="text" id="admin-username" autocomplete="username" required>
+        </label>
+        <label>
+          Şifre
+          <input type="password" id="admin-password" autocomplete="current-password" required>
+        </label>
+        <p id="login-error" class="login-error" hidden>Giriş bilgileri hatalı.</p>
+        <button type="submit" class="admin-save-button">Giriş Yap</button>
+      </form>
+      <a href="index.html" class="admin-back-link">Menüye dön</a>
+    </section>
+
+    <section class="admin-dashboard admin-menu-dashboard" id="admin-dashboard" hidden>
+      <header class="admin-dashboard-header">
+        <div>
+          <span class="admin-kicker">SliceUp Breakfast</span>
+          <h1>Admin Paneli</h1>
+          <p>Sol tarafta menünün gerçek görünümü var. Ürün veya ekstrayı seçip sağ panelden düzenleyin.</p>
+          <p id="admin-sync-status" class="admin-sync-status">Veri kaynağı hazırlanıyor...</p>
+        </div>
+        <div class="admin-header-actions">
+          <button type="button" id="new-product-button" class="admin-outline-button">Yeni Ürün</button>
+          <button type="button" id="new-extra-button" class="admin-outline-button">Yeni Ekstra</button>
+          <button type="button" id="new-drink-button" class="admin-outline-button">Yeni İçecek</button>
+          <a href="index.html" class="admin-outline-button">Menüyü Gör</a>
+          <button type="button" id="admin-logout" class="admin-outline-button">Çıkış</button>
+        </div>
+      </header>
+
+      <div class="admin-menu-layout">
+        <div class="admin-menu-preview">
+          <main class="menu-card" id="admin-menu-card">
+            <header class="menu-header">
+              <div class="logo-wrapper">
+                <img src="logo.jpg" alt="SliceUp Breakfast Logo" class="menu-logo">
+              </div>
+            </header>
+
+            <div class="menu-content">
+              <section class="menu-section">
+                <h3 class="section-title">Tuzlu Dilimler</h3>
+                <div class="menu-section-grid" id="admin-salty-slices"></div>
+              </section>
+
+              <section class="menu-section">
+                <h3 class="section-title">Tatlı Dilimler</h3>
+                <div class="menu-section-grid" id="admin-sweet-slices"></div>
+              </section>
+
+              <section class="menu-section">
+                <h3 class="section-title">Kavanoz Tatlılar</h3>
+                <div class="menu-section-grid" id="admin-jar-desserts"></div>
+              </section>
+
+              <div class="drinks-grid">
+                <section class="footer-column">
+                  <h3 class="column-title">Sıcak İçecekler</h3>
+                  <div class="options-list" id="admin-hot-drinks-container"></div>
+                </section>
+
+                <section class="footer-column">
+                  <h3 class="column-title">Soğuk İçecekler</h3>
+                  <div class="options-list" id="admin-cold-drinks-container"></div>
+                </section>
+              </div>
+
+              <div class="menu-footer-grid">
+                <section class="footer-column">
+                  <h3 class="column-title">İlave etmek ister misiniz?</h3>
+                  <div class="options-list" id="admin-extras-options-container"></div>
+                </section>
+
+                <section class="footer-column bread-story-column">
+                  <h3 class="column-title">Ekmeğimiz</h3>
+                  <div class="bread-story-card">
+                    <h4 class="bread-slogan">Ateşin ve Sabrın Çıtır Eseri: Her Dilimde Yaşayan Gerçek Ekşi Maya Kokusu</h4>
+                    <p class="bread-desc">Taş değirmende öğütülen unlarla, uzun fermantasyon süreciyle ve geleneksel yöntemlerle hazırlanır. Dışı çıtır, içi yoğun aromalı ve doğal dokusuyla gerçek köy ekmeği lezzetini sunar.</p>
+                    <p class="bread-desc">Katkı maddesi içermez. Sindirim dostu yapısı ve güçlü aromasıyla kahvaltılardan ana yemeklere kadar her sofraya yakışır.</p>
+                    <ul class="bread-bullet-list">
+                      <li><span class="bullet-icon">🔥</span> Günlük taze çıkar.</li>
+                      <li><span class="bullet-icon">🍞</span> Doğal ekşi maya ile fermente edilir.</li>
+                      <li><span class="bullet-icon">🌾</span> Geleneksel köy usulü üretim.</li>
+                    </ul>
+                  </div>
+                </section>
+              </div>
+
+              <footer class="allergen-footer">
+                <span class="allergen-title">Alerjen Uyarısı</span>
+                <div class="allergen-legend" id="admin-allergen-legend-container"></div>
+              </footer>
+            </div>
+          </main>
+        </div>
+
+        <aside class="admin-edit-panel">
+          <section class="admin-panel-card" id="product-editor-card">
+            <h2 id="product-form-title">Yeni Ürün</h2>
+            <form id="product-form" class="admin-panel-form">
+              <input type="hidden" id="product-id">
+              <label>
+                Menü bölümü
+                <select id="product-category" required>
+                  <option value="salty">Tuzlu Dilimler</option>
+                  <option value="sweet">Tatlı Dilimler</option>
+                  <option value="jar">Kavanoz Tatlılar</option>
+                </select>
+              </label>
+              <label>
+                Ürün adı
+                <input type="text" id="product-name" required>
+              </label>
+              <label>
+                Fiyat
+                <input type="number" id="product-price" min="0" step="1" required>
+              </label>
+              <label>
+                İçindekiler
+                <textarea id="product-ingredients" rows="3" required></textarea>
+              </label>
+              <label>
+                Ürün hikayesi / detay
+                <textarea id="product-story" rows="5" required></textarea>
+              </label>
+              <label>
+                Ürün resmi
+                <input type="file" id="product-image" accept="image/*">
+              </label>
+              <img id="product-image-preview" class="admin-image-preview" alt="Ürün resmi ön izlemesi" hidden>
+              <fieldset class="admin-allergen-fieldset">
+                <legend>Alerji tipi seçimi</legend>
+                <div id="product-allergens" class="admin-allergen-options"></div>
+              </fieldset>
+              <div class="admin-form-actions">
+                <button type="submit" class="admin-save-button">Kaydet</button>
+                <button type="button" id="cancel-product-edit" class="admin-outline-button">Temizle</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="admin-panel-card" id="extra-editor-card">
+            <h2 id="extra-form-title">Yeni Ekstra</h2>
+            <form id="extra-form" class="admin-panel-form">
+              <input type="hidden" id="extra-id">
+              <label>
+                Ekstra adı
+                <input type="text" id="extra-name" required>
+              </label>
+              <label>
+                Fiyat
+                <input type="number" id="extra-price" min="0" step="1" required>
+              </label>
+              <label>
+                Alerji tipi
+                <select id="extra-allergen">
+                  <option value="">Alerjen yok</option>
+                </select>
+              </label>
+              <div class="admin-form-actions">
+                <button type="submit" class="admin-save-button">Kaydet</button>
+                <button type="button" id="cancel-extra-edit" class="admin-outline-button">Temizle</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="admin-panel-card" id="drink-editor-card">
+            <h2 id="drink-form-title">Yeni İçecek</h2>
+            <form id="drink-form" class="admin-panel-form">
+              <input type="hidden" id="drink-id">
+              <label>
+                İçecek bölümü
+                <select id="drink-category" required>
+                  <option value="hot">Sıcak İçecek</option>
+                  <option value="cold">Soğuk İçecek</option>
+                </select>
+              </label>
+              <label>
+                İçecek adı
+                <input type="text" id="drink-name" required>
+              </label>
+              <label>
+                Fiyat
+                <input type="number" id="drink-price" min="0" step="1" required>
+              </label>
+              <div class="admin-form-actions">
+                <button type="submit" class="admin-save-button">Kaydet</button>
+                <button type="button" id="cancel-drink-edit" class="admin-outline-button">Temizle</button>
+              </div>
+            </form>
+          </section>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

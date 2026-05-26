@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SliceUp Breakfast - Enfes Dilimler ve Aile Hikayeleri</title>
+  <meta name="description" content="Çocukluğumuzun lezzetleri ve ailemizden hikayelerle bezenmiş, özenle hazırlanan SliceUp Breakfast tuzlu ve tatlı açık tost menüsü.">
+  
+  <!-- Premium Fonts: Outfit for body, Playfair Display for headings, and Dancing Script for handwriting accents -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,700;1,400;1,600&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Floating Print & PDF Action Button -->
+  <button id="btn-print-pdf" class="btn-print-fab" title="Menüyü PDF Olarak İndir / Yazdır">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-printer"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6"/><rect x="6" y="14" width="12" height="8" rx="1"/></svg>
+    <span>PDF İNDİR</span>
+  </button>
+
+  <div class="auth-bar" id="auth-bar">
+    <span id="auth-status" class="auth-status">Guest olarak görüntüleniyor</span>
+    <a href="admin.html" class="auth-button">Admin Girişi</a>
+  </div>
+
+  <!-- Interactive Background and Menu Board -->
+  <div class="app-container">
+    <div class="page-lemon-left"></div>
+    <div class="page-lemon-right"></div>
+    <main class="menu-card" id="main-menu-card">
+      
+      <!-- Top Header with Lemons and Logo -->
+      <header class="menu-header">
+        <div class="logo-wrapper">
+          <img src="logo.jpg" alt="SliceUp Breakfast Logo" class="menu-logo">
+        </div>
+      </header>
+
+      <!-- Menu Core Content -->
+      <div class="menu-content">
+        
+        <!-- Salty Slices Section -->
+        <section class="menu-section">
+          <h3 class="section-title">Tuzlu Dilimler</h3>
+          <div class="menu-section-grid" id="salty-slices">
+            <!-- Dynamically populated via JS -->
+          </div>
+        </section>
+
+        <!-- Sweet Slices Section -->
+        <section class="menu-section">
+          <h3 class="section-title">Tatlı Dilimler</h3>
+          <div class="menu-section-grid" id="sweet-slices">
+            <!-- Dynamically populated via JS -->
+          </div>
+        </section>
+
+        <section class="menu-section">
+          <h3 class="section-title">Kavanoz Tatlılar</h3>
+          <div class="menu-section-grid" id="jar-desserts">
+            <!-- Dynamically populated via JS -->
+          </div>
+        </section>
+
+        <div class="drinks-grid">
+          <section class="footer-column">
+            <h3 class="column-title">Sıcak İçecekler</h3>
+            <div class="options-list" id="hot-drinks-container">
+              <!-- Dynamically populated via JS -->
+            </div>
+          </section>
+
+          <section class="footer-column">
+            <h3 class="column-title">Soğuk İçecekler</h3>
+            <div class="options-list" id="cold-drinks-container">
+              <!-- Dynamically populated via JS -->
+            </div>
+          </section>
+        </div>
+
+        <!-- Footer Stack: Extras & Breads -->
+        <div class="menu-footer-grid">
+          <section class="footer-column">
+            <h3 class="column-title">İlave etmek ister misiniz?</h3>
+            <div class="options-list" id="extras-options-container">
+              <!-- Dynamically populated via JS -->
+            </div>
+          </section>
+
+          <section class="footer-column bread-story-column">
+            <h3 class="column-title">Ekmeğimiz</h3>
+            <div class="bread-story-card">
+              <h4 class="bread-slogan">Ateşin ve Sabrın Çıtır Eseri: Her Dilimde Yaşayan Gerçek Ekşi Maya Kokusu</h4>
+              <p class="bread-desc">Taş değirmende öğütülen unlarla, uzun fermantasyon süreciyle ve geleneksel yöntemlerle hazırlanır. Dışı çıtır, içi yoğun aromalı ve doğal dokusuyla gerçek köy ekmeği lezzetini sunar.</p>
+              <p class="bread-desc">Katkı maddesi içermez. Sindirim dostu yapısı ve güçlü aromasıyla kahvaltılardan ana yemeklere kadar her sofraya yakışır.</p>
+              <ul class="bread-bullet-list">
+                <li><span class="bullet-icon">🔥</span> Günlük taze çıkar.</li>
+                <li><span class="bullet-icon">🍞</span> Doğal ekşi maya ile fermente edilir.</li>
+                <li><span class="bullet-icon">🌾</span> Geleneksel köy usulü üretim.</li>
+              </ul>
+            </div>
+          </section>
+        </div>
+
+        <!-- Allergen Legend Footer -->
+        <footer class="allergen-footer">
+          <span class="allergen-title">Alerjen Uyarısı</span>
+          <div class="allergen-legend" id="allergen-legend-container">
+            <!-- Dynamically populated via JS -->
+          </div>
+        </footer>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Interactive Item Details Modal -->
+  <div class="modal-overlay" id="modal-overlay"></div>
+  <div class="item-modal" id="item-modal">
+    <button class="modal-close" id="modal-close" aria-label="Kapat">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+    <div class="modal-body">
+      <img id="modal-image" class="modal-image" alt="">
+      <div class="modal-header">
+        <h3 id="modal-title" class="modal-title">Ürün Adı</h3>
+        <span id="modal-price" class="modal-price">450 ₺</span>
+      </div>
+      
+      <!-- Detailed Story -->
+      <div class="modal-story-section">
+        <h5>Hikayemiz:</h5>
+        <p id="modal-story" class="modal-story">Aileden gelen samimi ve sıcak bir hikaye...</p>
+      </div>
+
+      <!-- Ingredients -->
+      <div class="modal-ingredients-section">
+        <h5>İçindekiler:</h5>
+        <p id="modal-ingredients" class="modal-ingredients">Malzeme detayları listesi.</p>
+      </div>
+
+      <!-- Allergens list -->
+      <div id="modal-allergens" class="modal-allergens-section">
+        <!-- Dynamically populated via JS -->
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

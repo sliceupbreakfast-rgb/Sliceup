@@ -1,0 +1,4 @@
+window.SLICEUP_SUPABASE_CONFIG = {
+  url: 'https://vbvhvxturlfeabacrubx.supabase.co',
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZidmh2eHR1cmxmZWFiYWNydWJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0NjU3NTgsImV4cCI6MjA5NTA0MTc1OH0.mKpXkBoQJ60RJhRjGHx7rwj4yE3VrPLZhGle0UYiQRU'
+};
