@@ -706,11 +706,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // Print Menu PDF Event
+  // Print Menu PDF Event (if button exists)
   const printBtn = document.getElementById('btn-print-pdf');
   if (printBtn) {
     printBtn.addEventListener('click', () => {
       window.print();
     });
+  }
+
+  // Auto-print if requested from Admin Panel
+  if (window.location.search.includes('print=true')) {
+    // Wait slightly for dynamic content and images to load before opening print dialog
+    setTimeout(() => {
+      window.print();
+    }, 1500);
   }
 });
