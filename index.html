@@ -34,9 +34,6 @@
       
       <!-- Top Header with Lemons and Logo -->
       <header class="menu-header">
-        <div class="logo-wrapper">
-          <img src="logo.jpg" alt="SliceUp Breakfast Logo" class="menu-logo">
-        </div>
       </header>
 
       <!-- Menu Core Content -->
@@ -48,24 +45,36 @@
           <div class="menu-section-grid" id="salty-slices">
             <!-- Dynamically populated via JS -->
           </div>
+          <p class="section-note">Tuzlu dilimlerimiz zeytinli yeşil salata ile servis edilmektedir.</p>
         </section>
 
         <!-- Sweet Slices Section -->
-        <section class="menu-section">
+        <section class="menu-section section-with-divider" id="section-sweet-slices">
           <h3 class="section-title">Tatlı Dilimler</h3>
           <div class="menu-section-grid" id="sweet-slices">
             <!-- Dynamically populated via JS -->
           </div>
         </section>
 
-        <section class="menu-section">
+        <!-- Footer Stack: Extras -->
+        <div class="menu-footer-grid">
+          <section class="footer-column">
+            <h3 class="column-title">İlave etmek ister misiniz?</h3>
+            <div class="options-list" id="extras-options-container">
+              <!-- Dynamically populated via JS -->
+            </div>
+          </section>
+
+        </div>
+
+        <section class="menu-section section-with-divider">
           <h3 class="section-title">Kavanoz Tatlılar</h3>
           <div class="menu-section-grid" id="jar-desserts">
             <!-- Dynamically populated via JS -->
           </div>
         </section>
 
-        <div class="drinks-grid">
+        <div class="drinks-grid" id="section-drinks">
           <section class="footer-column">
             <h3 class="column-title">Sıcak İçecekler</h3>
             <div class="options-list" id="hot-drinks-container">
@@ -77,30 +86,6 @@
             <h3 class="column-title">Soğuk İçecekler</h3>
             <div class="options-list" id="cold-drinks-container">
               <!-- Dynamically populated via JS -->
-            </div>
-          </section>
-        </div>
-
-        <!-- Footer Stack: Extras & Breads -->
-        <div class="menu-footer-grid">
-          <section class="footer-column">
-            <h3 class="column-title">İlave etmek ister misiniz?</h3>
-            <div class="options-list" id="extras-options-container">
-              <!-- Dynamically populated via JS -->
-            </div>
-          </section>
-
-          <section class="footer-column bread-story-column">
-            <h3 class="column-title">Ekmeğimiz</h3>
-            <div class="bread-story-card">
-              <h4 class="bread-slogan">Ateşin ve Sabrın Çıtır Eseri: Her Dilimde Yaşayan Gerçek Ekşi Maya Kokusu</h4>
-              <p class="bread-desc">Taş değirmende öğütülen unlarla, uzun fermantasyon süreciyle ve geleneksel yöntemlerle hazırlanır. Dışı çıtır, içi yoğun aromalı ve doğal dokusuyla gerçek köy ekmeği lezzetini sunar.</p>
-              <p class="bread-desc">Katkı maddesi içermez. Sindirim dostu yapısı ve güçlü aromasıyla kahvaltılardan ana yemeklere kadar her sofraya yakışır.</p>
-              <ul class="bread-bullet-list">
-                <li><span class="bullet-icon">🔥</span> Günlük taze çıkar.</li>
-                <li><span class="bullet-icon">🍞</span> Doğal ekşi maya ile fermente edilir.</li>
-                <li><span class="bullet-icon">🌾</span> Geleneksel köy usulü üretim.</li>
-              </ul>
             </div>
           </section>
         </div>

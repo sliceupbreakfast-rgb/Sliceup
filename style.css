@@ -7,6 +7,9 @@
   --color-forest: #2E7D5F;
   --color-forest-light: #3C8B6B;
   --color-forest-ultra-light: rgba(46, 125, 95, 0.08);
+  --gingham-dark: #084821;
+  --gingham-main: #2F7446;
+  --gingham-light: #DDE9DF;
   --color-cream: #FAF7F2;
   --color-charcoal: #2A2A2A;
   --color-muted: #666666;
@@ -55,9 +58,12 @@ body {
   /* Beautiful custom forest-green gingham pattern */
   background-color: #ffffff;
   background-image: 
-    linear-gradient(90deg, rgba(46, 125, 95, 0.07) 50%, transparent 50%),
-    linear-gradient(rgba(46, 125, 95, 0.07) 50%, transparent 50%);
-  background-size: 60px 60px;
+    radial-gradient(circle, rgba(255, 255, 255, 0.32) 0 1px, transparent 1.2px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.22) 0 0.8px, transparent 1px),
+    linear-gradient(90deg, rgba(8, 72, 33, 0.4) 50%, transparent 50%),
+    linear-gradient(rgba(47, 116, 70, 0.32) 50%, transparent 50%);
+  background-size: 18px 18px, 26px 26px, 60px 60px, 60px 60px;
+  background-position: 0 0, 9px 11px, 0 0, 0 0;
 }
 
 /* Premium Menu Card Paper */
@@ -87,43 +93,15 @@ body {
   width: 100%;
   aspect-ratio: 723 / 250;
   background-color: var(--color-white);
-  background-image: url('header_lemons.png');
-  background-position: center top;
+  background-position: center;
   background-repeat: no-repeat;
-  background-size: 100% 100%;
+  background-size: cover;
   overflow: hidden;
 }
 
-/* Centered Circular Logo Container */
-.logo-wrapper {
-  width: 22%;
-  aspect-ratio: 1 / 1;
-  max-width: 165px;
-  min-width: 110px;
-  border-radius: 50%;
-  background-color: var(--color-white);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 10;
-  border: 4px solid var(--color-white);
-  box-shadow: 
-    0 4px 10px rgba(0, 0, 0, 0.05),
-    0 15px 30px rgba(46, 125, 95, 0.15);
-  overflow: hidden;
-}
-
-/* Slices the black background corners of the logo */
-.menu-logo {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 50%;
-  transform: scale(1.05); /* slight zoom to ensure border coverage */
+.menu-header::before,
+.menu-header::after {
+  content: none;
 }
 
 /* ==========================================================================
@@ -138,6 +116,12 @@ body {
   margin-bottom: 50px;
 }
 
+.section-with-divider {
+  margin-top: 40px;
+  border-top: 2px solid rgba(46, 125, 95, 0.1);
+  padding-top: 40px;
+}
+
 /* Cursive handwritten-style section headers */
 .section-title {
   font-family: var(--font-cursive);
@@ -148,6 +132,19 @@ body {
   font-weight: 600;
   letter-spacing: 0.5px;
   position: relative;
+}
+
+.section-note {
+  display: block;
+  margin: 24px auto 0;
+  padding: 0;
+  color: var(--color-forest);
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-style: italic;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-align: center;
 }
 
 /* Menu Items List */
@@ -307,19 +304,32 @@ body {
   color: var(--color-forest);
 }
 
-/* ==========================================================================
+/* ========================================================================== 
    Ekmeğimiz (Our Bread) Story Card Styles
    ========================================================================== */
 
-.bread-story-card {
+.bread-story-column {
   background-color: var(--color-forest-ultra-light);
-  padding: 24px;
-  border-radius: 8px;
+  border: 1px solid rgba(46, 125, 95, 0.12);
   border-left: 4px solid var(--color-forest);
+  border-radius: 14px;
+  box-shadow: 0 10px 24px rgba(46, 125, 95, 0.06);
+  padding: 24px;
+}
+
+.bread-story-column .column-title {
+  margin-bottom: 16px;
+}
+
+.bread-story-card {
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+  border-left: none;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  box-shadow: 0 4px 12px rgba(46, 125, 95, 0.02);
+  box-shadow: none;
 }
 
 .bread-slogan {
@@ -421,8 +431,8 @@ body {
 
 .auth-bar {
   position: fixed;
-  top: 18px;
-  right: 18px;
+  left: 18px;
+  bottom: 18px;
   z-index: 99;
   display: flex;
   align-items: center;
@@ -475,6 +485,90 @@ body {
 
 .auth-button-secondary:hover {
   background-color: rgba(46, 125, 95, 0.18);
+}
+
+.menu-view-controls {
+  position: fixed;
+  left: 18px;
+  top: 18px;
+  z-index: 99;
+  display: flex;
+  gap: 10px;
+  padding: 8px;
+  background-color: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(46, 125, 95, 0.12);
+  border-radius: 999px;
+  box-shadow: 0 10px 25px rgba(46, 125, 95, 0.12);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.menu-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-forest);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+  user-select: none;
+}
+
+.menu-switch input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.switch-slider {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  border-radius: 999px;
+  background-color: rgba(102, 102, 102, 0.24);
+  transition: var(--transition-fast);
+}
+
+.switch-slider::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: var(--color-white);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+  transition: var(--transition-fast);
+}
+
+.menu-switch input:checked + .switch-slider {
+  background-color: var(--color-forest);
+}
+
+.menu-switch input:checked + .switch-slider::after {
+  transform: translateX(16px);
+}
+
+.menu-switch input:focus-visible + .switch-slider {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 3px;
+}
+
+.menu-images-hidden .menu-item-image,
+.menu-images-hidden .modal-image {
+  display: none !important;
+}
+
+.admin-view-controls {
+  position: static;
+  border-color: var(--admin-border);
+  border-radius: 10px;
+  box-shadow: none;
+  padding: 6px 8px;
 }
 
 .btn-print-fab {
@@ -857,9 +951,12 @@ body {
   min-height: 100vh;
   background-color: #ffffff;
   background-image: 
-    linear-gradient(90deg, rgba(46, 125, 95, 0.07) 50%, transparent 50%),
-    linear-gradient(rgba(46, 125, 95, 0.07) 50%, transparent 50%);
-  background-size: 60px 60px;
+    radial-gradient(circle, rgba(255, 255, 255, 0.32) 0 1px, transparent 1.2px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.22) 0 0.8px, transparent 1px),
+    linear-gradient(90deg, rgba(8, 72, 33, 0.4) 50%, transparent 50%),
+    linear-gradient(rgba(47, 116, 70, 0.32) 50%, transparent 50%);
+  background-size: 18px 18px, 26px 26px, 60px 60px, 60px 60px;
+  background-position: 0 0, 9px 11px, 0 0, 0 0;
 }
 
 .admin-shell {
@@ -981,6 +1078,17 @@ body {
   background-color: var(--color-forest-ultra-light);
 }
 
+.admin-panel-toggle-button.is-active {
+  background-color: var(--color-forest);
+  border-color: var(--color-forest);
+  color: var(--color-white);
+}
+
+.admin-panel-toggle-button.is-active:hover {
+  background-color: var(--color-forest-light);
+  border-color: var(--color-forest-light);
+}
+
 .admin-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
@@ -1068,7 +1176,8 @@ body {
 
 .admin-preview-item:hover .admin-inline-actions,
 .admin-extra-row:hover .admin-inline-actions,
-.admin-drink-row:hover .admin-inline-actions {
+.admin-drink-row:hover .admin-inline-actions,
+.bread-story-column:hover .admin-inline-actions {
   opacity: 1;
 }
 
@@ -1084,8 +1193,31 @@ body {
   padding: 5px 9px;
 }
 
+.admin-inline-actions-always {
+  opacity: 1;
+}
+
 .admin-inline-actions button:last-child {
   color: #b42318;
+}
+
+.admin-inline-actions button[data-action="toggle-bread"][data-visible="false"] {
+  color: var(--color-forest);
+}
+
+.admin-bread-hidden-preview.bread-story-column {
+  border-left-style: dashed;
+  opacity: 0.64;
+}
+
+.admin-bread-status {
+  align-self: flex-start;
+  border-radius: 999px;
+  background-color: rgba(180, 35, 24, 0.08);
+  color: #b42318;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 4px 9px;
 }
 
 .admin-extra-row,
@@ -1264,12 +1396,6 @@ body {
     height: 180px;
   }
 
-  .logo-wrapper {
-    width: 120px;
-    height: 120px;
-    top: 30px;
-  }
-
   .section-title {
     font-size: 2.3rem;
   }
@@ -1295,11 +1421,16 @@ body {
   }
 
   .auth-bar {
-    top: 12px;
-    right: 12px;
     left: 12px;
+    right: auto;
+    bottom: 12px;
     justify-content: space-between;
     border-radius: 16px;
+  }
+
+  .admin-view-controls {
+    width: 100%;
+    justify-content: center;
   }
 
   .auth-status {
@@ -1374,7 +1505,7 @@ body {
     background-color: var(--color-white) !important;
     color: var(--color-charcoal) !important;
     width: 210mm;
-    height: 297mm;
+    height: auto;
     margin: 0 !important;
     padding: 0 !important;
     -webkit-print-color-adjust: exact !important;
@@ -1384,28 +1515,30 @@ body {
   /* Full Screen Print Container */
   .app-container {
     padding: 0 !important;
+    background-color: #ffffff !important;
     background-image: 
-      linear-gradient(90deg, rgba(46, 125, 95, 0.12) 50%, transparent 50%),
-      linear-gradient(rgba(46, 125, 95, 0.12) 50%, transparent 50%) !important;
-    background-size: 55px 55px !important;
+      radial-gradient(circle, rgba(255, 255, 255, 0.32) 0 1px, transparent 1.2px),
+      radial-gradient(circle, rgba(255, 255, 255, 0.22) 0 0.8px, transparent 1px),
+      linear-gradient(90deg, rgba(8, 72, 33, 0.4) 50%, transparent 50%),
+      linear-gradient(rgba(47, 116, 70, 0.32) 50%, transparent 50%) !important;
+    background-size: 18px 18px, 26px 26px, 55px 55px, 55px 55px !important;
+    background-position: 0 0, 9px 11px, 0 0, 0 0 !important;
     width: 210mm !important;
-    height: 297mm !important;
+    height: auto !important;
     display: block !important;
   }
 
-  /* Format Card to perfectly fit exactly one vertical page without clipping */
+  /* Format Card to print across multiple pages without clipping */
   .menu-card {
     border: none !important;
     box-shadow: none !important;
     width: 190mm !important;
-    height: 277mm !important;
+    height: auto !important;
     margin: 10mm auto !important; /* Elegant surrounding checkered margin */
     background-color: var(--color-white) !important;
     border-radius: 0 !important;
     padding: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: space-between !important;
+    display: block !important;
   }
 
   .menu-header {
@@ -1413,32 +1546,26 @@ body {
     aspect-ratio: 723 / 250 !important;
     height: auto !important;
     background-color: var(--color-white) !important;
-    background-image: url('header_lemons.png') !important;
-    background-position: center top !important;
-    background-repeat: no-repeat !important;
-    background-size: 100% 100% !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  .logo-wrapper {
-    width: 22% !important;
-    aspect-ratio: 1 / 1 !important;
-    max-width: 150px !important;
-    min-width: 110px !important;
-    top: 50% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    border-width: 4px !important;
-    box-shadow: none !important;
+  /* Force Page Breaks */
+  #section-sweet-slices,
+  #section-drinks {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  .menu-header::before,
+  .menu-header::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   .menu-content {
     padding: 10px 30px 20px 30px !important;
-    flex-grow: 1 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: space-between !important;
+    display: block !important;
   }
 
   .menu-section {
@@ -1556,6 +1683,7 @@ body {
   /* Completely hide web interaction UI */
   .btn-print-fab,
   .auth-bar,
+  .menu-view-controls,
   .modal-overlay,
   .item-modal,
   .login-overlay,

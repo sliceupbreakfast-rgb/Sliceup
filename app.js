@@ -135,14 +135,42 @@ const jarDesserts = [];
 // Extras (Ekstralar)
 const extrasOptions = [
   { name: 'Çırpılmış yumurta', price: 450, allergen: 'egg' },
-  { name: 'Bacon (domuz pastırması)', price: 450, allergen: null }
+  { name: 'Bacon (domuz pastırması)', price: 450, allergen: null },
+  { name: 'Hindi Füme (iki dilim)', price: 160, allergen: null },
+  { name: 'Füme Et "Dana Cotto" (iki dilim)', price: 240, allergen: null },
+  { name: 'Çemensiz Pastırma (iki dilim)', price: 220, allergen: null },
+  { name: 'Tam Yağlı Beyaz Peynir / Çeçil Peyniri / Bodrum Tulum Peyniri (iki dilim)', price: 150, allergen: 'dairy' },
+  { name: 'Domates, Salatalık Söğüş', price: 75, allergen: null },
+  { name: 'Zeytin Salatası (yeşil, siyah, ızgara zeytinler ve kuru domates)', price: 75, allergen: null },
+  { name: 'Bal / Reçel / Nutella', price: 100, allergen: null },
+  { name: 'Brioche Ekmeği / Karabuğday Ekmeği (Glutensiz)', price: 50, allergen: 'gluten' }
 ];
 
 const hotDrinks = [];
 const coldDrinks = [];
 
+const defaultBreadPanel = {
+  title: 'Ekmeğimiz',
+  slogan: 'Ateşin ve Sabrın Çıtır Eseri: Her Dilimde Yaşayan Gerçek Ekşi Maya Kokusu',
+  description1: 'Taş değirmende öğütülen unlarla, uzun fermantasyon süreciyle ve geleneksel yöntemlerle hazırlanır. Dışı çıtır, içi yoğun aromalı ve doğal dokusuyla gerçek köy ekmeği lezzetini sunar.',
+  description2: 'Katkı maddesi içermez. Sindirim dostu yapısı ve güçlü aromasıyla kahvaltılardan ana yemeklere kadar her sofraya yakışır.',
+  items: [
+    { icon: '🔥', text: 'Günlük taze çıkar.' },
+    { icon: '🍞', text: 'Doğal ekşi maya ile fermente edilir.' },
+    { icon: '🌾', text: 'Geleneksel köy usulü üretim.' }
+  ]
+};
+
 const MENU_STORAGE_KEY = 'sliceup-menu-data-v1';
+const VIEW_OPTIONS_STORAGE_KEY = 'sliceup-view-options-v1';
 let supabaseClient = null;
+let breadPanel = structuredClone(defaultBreadPanel);
+let headerImageUrl = '';
+
+const viewOptions = {
+  showImages: true,
+  showBread: true
+};
 
 function escapeHTML(value) {
   return String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -235,6 +263,27 @@ function normalizeDrinkOption(option, fallback = {}) {
   };
 }
 
+function normalizeBreadPanel(panel = {}, items = []) {
+  const normalizedItems = Array.isArray(items)
+    ? items.slice(0, 3).map((item, index) => ({
+      icon: String(item.icon || defaultBreadPanel.items[index]?.icon || ''),
+      text: String(item.text || defaultBreadPanel.items[index]?.text || '')
+    }))
+    : [];
+
+  return {
+    title: String(panel.title || defaultBreadPanel.title),
+    slogan: String(panel.slogan || defaultBreadPanel.slogan),
+    description1: String(panel.description1 || panel.description_1 || defaultBreadPanel.description1),
+    description2: String(panel.description2 || panel.description_2 || defaultBreadPanel.description2),
+    items: normalizedItems.length === 3 ? normalizedItems : structuredClone(defaultBreadPanel.items)
+  };
+}
+
+function getCSSImageUrl(url) {
+  return `url("${String(url).replace(/"/g, '%22')}")`;
+}
+
 function applySavedItems(targetItems, savedItems) {
   if (!Array.isArray(savedItems)) return;
 
@@ -293,15 +342,62 @@ async function loadSupabaseMenuData(client) {
   coldDrinks.splice(0, coldDrinks.length, ...drinksResponse.data.filter(drink => drink.category === 'cold').map(mapSupabaseDrink));
 }
 
+async function loadSupabaseViewOptions(client) {
+  const [panelResponse, itemsResponse] = await Promise.all([
+    client
+      .from('bread_panel')
+      .select('title, slogan, description_1, description_2, is_active')
+      .limit(1),
+    client
+      .from('bread_panel_items')
+      .select('icon, text, sort_order, is_active')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+  ]);
+
+  if (panelResponse.error || itemsResponse.error) {
+    console.warn('Ekmeğimiz ayarları yüklenemedi:', panelResponse.error?.message || itemsResponse.error?.message);
+    return;
+  }
+
+  viewOptions.showBread = panelResponse.data.length > 0 && panelResponse.data.some(row => row.is_active);
+  if (panelResponse.data.length > 0) breadPanel = normalizeBreadPanel(panelResponse.data[0], itemsResponse.data);
+  saveViewOptions();
+}
+
+async function loadSupabaseHeaderImage(client) {
+  const response = await client
+    .from('menu_header')
+    .select('image_url, is_active')
+    .limit(1);
+
+  if (response.error) {
+    console.warn('Üst menü görseli yüklenemedi:', response.error.message);
+    return;
+  }
+
+  const row = response.data[0];
+  headerImageUrl = row?.is_active ? (row.image_url || '') : '';
+}
+
 async function loadMenuData() {
   const client = getSupabaseClient();
+  let supabaseMenuLoaded = false;
 
   if (client) {
     try {
       await loadSupabaseMenuData(client);
-      return;
+      supabaseMenuLoaded = true;
     } catch (error) {
-      console.warn('Supabase verisi yüklenemedi, yerel veri kullanılacak:', error.message);
+      console.warn('Supabase menü verisi yüklenemedi, yerel veri kullanılacak:', error.message);
+    }
+
+    if (supabaseMenuLoaded) {
+      await Promise.allSettled([
+        loadSupabaseViewOptions(client),
+        loadSupabaseHeaderImage(client)
+      ]);
+      return;
     }
   }
 
@@ -315,6 +411,8 @@ async function loadMenuData() {
     applySavedExtras(savedData.extrasOptions);
     applySavedDrinks(hotDrinks, savedData.hotDrinks);
     applySavedDrinks(coldDrinks, savedData.coldDrinks);
+    if (savedData.breadPanel) breadPanel = normalizeBreadPanel(savedData.breadPanel, savedData.breadPanel.items);
+    headerImageUrl = String(savedData.headerImageUrl || '');
   } catch (error) {
     localStorage.removeItem(MENU_STORAGE_KEY);
   }
@@ -327,8 +425,87 @@ function saveMenuData() {
     jarDesserts,
     extrasOptions,
     hotDrinks,
-    coldDrinks
+    coldDrinks,
+    breadPanel,
+    headerImageUrl
   }));
+}
+
+function applyHeaderImage() {
+  document.querySelectorAll('.menu-header').forEach(header => {
+    header.style.backgroundImage = headerImageUrl ? getCSSImageUrl(headerImageUrl) : 'none';
+  });
+}
+
+function loadViewOptions() {
+  try {
+    const savedOptions = JSON.parse(localStorage.getItem(VIEW_OPTIONS_STORAGE_KEY));
+    if (!savedOptions) return;
+
+    if (typeof savedOptions.showImages === 'boolean') viewOptions.showImages = savedOptions.showImages;
+    if (typeof savedOptions.showBread === 'boolean') viewOptions.showBread = savedOptions.showBread;
+  } catch (error) {
+    localStorage.removeItem(VIEW_OPTIONS_STORAGE_KEY);
+  }
+}
+
+function saveViewOptions() {
+  localStorage.setItem(VIEW_OPTIONS_STORAGE_KEY, JSON.stringify(viewOptions));
+}
+
+function applyViewOptions() {
+  document.body.classList.toggle('menu-images-hidden', !viewOptions.showImages);
+
+  const imagesToggle = document.getElementById('toggle-menu-images');
+  if (imagesToggle) imagesToggle.checked = viewOptions.showImages;
+
+  const breadToggle = document.getElementById('toggle-bread-section');
+  if (breadToggle) breadToggle.checked = viewOptions.showBread;
+
+  const breadSection = document.getElementById('bread-section');
+  if (breadSection) breadSection.hidden = !viewOptions.showBread;
+}
+
+function setupViewControls() {
+  const imagesToggle = document.getElementById('toggle-menu-images');
+  const breadToggle = document.getElementById('toggle-bread-section');
+
+  if (imagesToggle) {
+    imagesToggle.addEventListener('change', () => {
+      viewOptions.showImages = imagesToggle.checked;
+      applyViewOptions();
+      saveViewOptions();
+    });
+  }
+
+  if (breadToggle) {
+    breadToggle.addEventListener('change', () => {
+      viewOptions.showBread = breadToggle.checked;
+      applyViewOptions();
+      saveViewOptions();
+    });
+  }
+}
+
+function setupViewOptionSync() {
+  window.addEventListener('storage', event => {
+    if (event.key === VIEW_OPTIONS_STORAGE_KEY) {
+      loadViewOptions();
+      applyViewOptions();
+      return;
+    }
+
+    if (event.key === MENU_STORAGE_KEY) {
+      try {
+        const savedData = JSON.parse(event.newValue);
+        headerImageUrl = String(savedData?.headerImageUrl || '');
+        applyHeaderImage();
+      } catch (error) {
+        headerImageUrl = '';
+        applyHeaderImage();
+      }
+    }
+  });
 }
 
 // Utility: Build Allergen HTML
@@ -396,6 +573,27 @@ function renderDrinkOptions(items, containerId) {
       <span class="option-price">${escapeHTML(option.price)}</span>
     </div>
   `).join('');
+}
+
+function renderBreadPanel() {
+  const section = document.getElementById('bread-section');
+  if (!section) return;
+
+  const title = section.querySelector('.column-title');
+  const card = section.querySelector('.bread-story-card');
+  if (title) title.textContent = breadPanel.title;
+  if (!card) return;
+
+  card.innerHTML = `
+    <h4 class="bread-slogan">${escapeHTML(breadPanel.slogan)}</h4>
+    <p class="bread-desc">${escapeHTML(breadPanel.description1)}</p>
+    <p class="bread-desc">${escapeHTML(breadPanel.description2)}</p>
+    <ul class="bread-bullet-list">
+      ${breadPanel.items.map(item => `
+        <li><span class="bullet-icon">${escapeHTML(item.icon)}</span> ${escapeHTML(item.text)}</li>
+      `).join('')}
+    </ul>
+  `;
 }
 
 // Render Allergen Legend
@@ -471,6 +669,7 @@ function closeItemModal() {
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', async () => {
+  loadViewOptions();
   await loadMenuData();
 
   // Render components
@@ -480,7 +679,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderDrinkOptions(hotDrinks, 'hot-drinks-container');
   renderDrinkOptions(coldDrinks, 'cold-drinks-container');
   renderExtrasOptions();
+  renderBreadPanel();
   renderAllergenLegend();
+  applyHeaderImage();
+  applyViewOptions();
+  setupViewControls();
+  setupViewOptionSync();
 
   // Attach event listeners for menu item clicks
   document.querySelectorAll('.menu-section-grid').forEach(grid => {

@@ -39,9 +39,17 @@
           <p id="admin-sync-status" class="admin-sync-status">Veri kaynağı hazırlanıyor...</p>
         </div>
         <div class="admin-header-actions">
-          <button type="button" id="new-product-button" class="admin-outline-button">Yeni Ürün</button>
-          <button type="button" id="new-extra-button" class="admin-outline-button">Yeni Ekstra</button>
-          <button type="button" id="new-drink-button" class="admin-outline-button">Yeni İçecek</button>
+          <div class="menu-view-controls admin-view-controls" aria-label="Menü görünüm ayarları">
+            <label class="menu-switch">
+              <span>Resimler</span>
+              <input type="checkbox" id="toggle-menu-images" checked>
+              <span class="switch-slider" aria-hidden="true"></span>
+            </label>
+          </div>
+          <button type="button" id="header-image-button" class="admin-outline-button admin-panel-toggle-button">Üst Menü Görseli</button>
+          <button type="button" id="new-product-button" class="admin-outline-button admin-panel-toggle-button">Yeni Ürün</button>
+          <button type="button" id="new-extra-button" class="admin-outline-button admin-panel-toggle-button">Yeni Ekstra</button>
+          <button type="button" id="new-drink-button" class="admin-outline-button admin-panel-toggle-button">Yeni İçecek</button>
           <a href="index.html" class="admin-outline-button">Menüyü Gör</a>
           <button type="button" id="admin-logout" class="admin-outline-button">Çıkış</button>
         </div>
@@ -51,14 +59,12 @@
         <div class="admin-menu-preview">
           <main class="menu-card" id="admin-menu-card">
             <header class="menu-header">
-              <div class="logo-wrapper">
-                <img src="logo.jpg" alt="SliceUp Breakfast Logo" class="menu-logo">
-              </div>
             </header>
 
             <div class="menu-content">
               <section class="menu-section">
                 <h3 class="section-title">Tuzlu Dilimler</h3>
+                <p class="section-note">Tuzlu dilimlerimiz zeytinli yeşil salata ile servis edilmektedir.</p>
                 <div class="menu-section-grid" id="admin-salty-slices"></div>
               </section>
 
@@ -90,19 +96,6 @@
                   <div class="options-list" id="admin-extras-options-container"></div>
                 </section>
 
-                <section class="footer-column bread-story-column">
-                  <h3 class="column-title">Ekmeğimiz</h3>
-                  <div class="bread-story-card">
-                    <h4 class="bread-slogan">Ateşin ve Sabrın Çıtır Eseri: Her Dilimde Yaşayan Gerçek Ekşi Maya Kokusu</h4>
-                    <p class="bread-desc">Taş değirmende öğütülen unlarla, uzun fermantasyon süreciyle ve geleneksel yöntemlerle hazırlanır. Dışı çıtır, içi yoğun aromalı ve doğal dokusuyla gerçek köy ekmeği lezzetini sunar.</p>
-                    <p class="bread-desc">Katkı maddesi içermez. Sindirim dostu yapısı ve güçlü aromasıyla kahvaltılardan ana yemeklere kadar her sofraya yakışır.</p>
-                    <ul class="bread-bullet-list">
-                      <li><span class="bullet-icon">🔥</span> Günlük taze çıkar.</li>
-                      <li><span class="bullet-icon">🍞</span> Doğal ekşi maya ile fermente edilir.</li>
-                      <li><span class="bullet-icon">🌾</span> Geleneksel köy usulü üretim.</li>
-                    </ul>
-                  </div>
-                </section>
               </div>
 
               <footer class="allergen-footer">
@@ -114,7 +107,60 @@
         </div>
 
         <aside class="admin-edit-panel">
-          <section class="admin-panel-card" id="product-editor-card">
+          <section class="admin-panel-card" id="header-image-card" hidden>
+            <h2>Üst Menü Görseli</h2>
+            <form id="header-image-form" class="admin-panel-form">
+              <label>
+                Menü üst resmi
+                <input type="file" id="header-image-input" accept="image/*">
+              </label>
+              <img id="header-image-preview" class="admin-image-preview" alt="Üst menü görseli ön izlemesi" hidden>
+              <div class="admin-form-actions">
+                <button type="submit" class="admin-save-button">Yükle</button>
+                <button type="button" id="remove-header-image" class="admin-outline-button">Kaldır</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="admin-panel-card" id="bread-editor-card" hidden>
+            <h2>Ekmeğimiz Düzenle</h2>
+            <form id="bread-form" class="admin-panel-form">
+              <label>
+                Başlık
+                <input type="text" id="bread-title" required>
+              </label>
+              <label>
+                Slogan
+                <input type="text" id="bread-slogan" required>
+              </label>
+              <label>
+                Açıklama 1
+                <textarea id="bread-description-1" rows="3" required></textarea>
+              </label>
+              <label>
+                Açıklama 2
+                <textarea id="bread-description-2" rows="3" required></textarea>
+              </label>
+              <label>
+                Madde 1
+                <input type="text" id="bread-item-1" required>
+              </label>
+              <label>
+                Madde 2
+                <input type="text" id="bread-item-2" required>
+              </label>
+              <label>
+                Madde 3
+                <input type="text" id="bread-item-3" required>
+              </label>
+              <div class="admin-form-actions">
+                <button type="submit" class="admin-save-button">Kaydet</button>
+                <button type="button" id="cancel-bread-edit" class="admin-outline-button">Kapat</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="admin-panel-card" id="product-editor-card" hidden>
             <h2 id="product-form-title">Yeni Ürün</h2>
             <form id="product-form" class="admin-panel-form">
               <input type="hidden" id="product-id">
@@ -158,7 +204,7 @@
             </form>
           </section>
 
-          <section class="admin-panel-card" id="extra-editor-card">
+          <section class="admin-panel-card" id="extra-editor-card" hidden>
             <h2 id="extra-form-title">Yeni Ekstra</h2>
             <form id="extra-form" class="admin-panel-form">
               <input type="hidden" id="extra-id">
@@ -183,7 +229,7 @@
             </form>
           </section>
 
-          <section class="admin-panel-card" id="drink-editor-card">
+          <section class="admin-panel-card" id="drink-editor-card" hidden>
             <h2 id="drink-form-title">Yeni İçecek</h2>
             <form id="drink-form" class="admin-panel-form">
               <input type="hidden" id="drink-id">

@@ -1,8 +1,10 @@
 const MENU_STORAGE_KEY = 'sliceup-menu-data-v1';
+const VIEW_OPTIONS_STORAGE_KEY = 'sliceup-view-options-v1';
 const ADMIN_SESSION_KEY = 'sliceup-admin-session';
 const ADMIN_USERNAME = 'admin';
 const ADMIN_PASSWORD = 'admin123';
 const STORAGE_BUCKET = 'menu-images';
+const HEADER_STORAGE_BUCKET = 'menu-header-images';
 
 const allergensConfig = {
   egg: { id: 'egg', name: 'Yumurta', icon: '🥚', class: 'allergen-egg', description: 'Yumurta ve yumurta ürünleri içerir.' },
@@ -36,11 +38,38 @@ const defaultMenuData = {
   coldDrinks: []
 };
 
+const defaultBreadPanel = {
+  title: 'Ekmeğimiz',
+  slogan: 'Ateşin ve Sabrın Çıtır Eseri: Her Dilimde Yaşayan Gerçek Ekşi Maya Kokusu',
+  description1: 'Taş değirmende öğütülen unlarla, uzun fermantasyon süreciyle ve geleneksel yöntemlerle hazırlanır. Dışı çıtır, içi yoğun aromalı ve doğal dokusuyla gerçek köy ekmeği lezzetini sunar.',
+  description2: 'Katkı maddesi içermez. Sindirim dostu yapısı ve güçlü aromasıyla kahvaltılardan ana yemeklere kadar her sofraya yakışır.',
+  items: [
+    { icon: '🔥', text: 'Günlük taze çıkar.' },
+    { icon: '🍞', text: 'Doğal ekşi maya ile fermente edilir.' },
+    { icon: '🌾', text: 'Geleneksel köy usulü üretim.' }
+  ]
+};
+
+const BREAD_PANEL_ITEM_IDS = [
+  '00000000-0000-0000-0000-000000000401',
+  '00000000-0000-0000-0000-000000000402',
+  '00000000-0000-0000-0000-000000000403'
+];
+
 let menuData = structuredClone(defaultMenuData);
+let breadPanel = structuredClone(defaultBreadPanel);
+let headerImageUrl = '';
 let supabaseClient = null;
 let selectedImageData = '';
 let selectedImageFile = null;
 let currentProductImage = '';
+let selectedHeaderImageData = '';
+let selectedHeaderImageFile = null;
+
+const viewOptions = {
+  showImages: true,
+  showBread: true
+};
 
 function escapeHTML(value) {
   return String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -149,6 +178,27 @@ function normalizeDrink(drink) {
   };
 }
 
+function normalizeBreadPanel(panel = {}, items = []) {
+  const normalizedItems = Array.isArray(items)
+    ? items.slice(0, 3).map((item, index) => ({
+      icon: String(item.icon || defaultBreadPanel.items[index]?.icon || ''),
+      text: String(item.text || defaultBreadPanel.items[index]?.text || '')
+    }))
+    : [];
+
+  return {
+    title: String(panel.title || defaultBreadPanel.title),
+    slogan: String(panel.slogan || defaultBreadPanel.slogan),
+    description1: String(panel.description1 || panel.description_1 || defaultBreadPanel.description1),
+    description2: String(panel.description2 || panel.description_2 || defaultBreadPanel.description2),
+    items: normalizedItems.length === 3 ? normalizedItems : structuredClone(defaultBreadPanel.items)
+  };
+}
+
+function getCSSImageUrl(url) {
+  return `url("${String(url).replace(/"/g, '%22')}")`;
+}
+
 async function loadSupabaseData(client) {
   const [itemsResponse, extrasResponse, drinksResponse] = await Promise.all([
     client
@@ -197,6 +247,44 @@ async function loadSupabaseData(client) {
   });
 }
 
+async function loadSupabaseHeaderImage(client) {
+  const response = await client
+    .from('menu_header')
+    .select('image_url, is_active')
+    .limit(1);
+
+  if (response.error) {
+    console.warn('Üst menü görseli yüklenemedi:', response.error.message);
+    return;
+  }
+
+  const row = response.data[0];
+  headerImageUrl = row?.is_active ? (row.image_url || '') : '';
+}
+
+async function loadSupabaseViewOptions(client) {
+  const [panelResponse, itemsResponse] = await Promise.all([
+    client
+      .from('bread_panel')
+      .select('title, slogan, description_1, description_2, is_active')
+      .limit(1),
+    client
+      .from('bread_panel_items')
+      .select('icon, text, sort_order, is_active')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+  ]);
+
+  if (panelResponse.error || itemsResponse.error) {
+    console.warn('Ekmeğimiz ayarları yüklenemedi:', panelResponse.error?.message || itemsResponse.error?.message);
+    return;
+  }
+
+  viewOptions.showBread = panelResponse.data.length > 0 && panelResponse.data.some(row => row.is_active);
+  if (panelResponse.data.length > 0) breadPanel = normalizeBreadPanel(panelResponse.data[0], itemsResponse.data);
+  saveViewOptions();
+}
+
 function loadLocalData() {
   try {
     const stored = JSON.parse(localStorage.getItem(MENU_STORAGE_KEY));
@@ -208,6 +296,8 @@ function loadLocalData() {
     if (Array.isArray(stored.extrasOptions)) menuData.extrasOptions = stored.extrasOptions.map(normalizeExtra);
     if (Array.isArray(stored.hotDrinks)) menuData.hotDrinks = stored.hotDrinks.map(normalizeDrink);
     if (Array.isArray(stored.coldDrinks)) menuData.coldDrinks = stored.coldDrinks.map(normalizeDrink);
+    if (stored.breadPanel) breadPanel = normalizeBreadPanel(stored.breadPanel, stored.breadPanel.items);
+    headerImageUrl = String(stored.headerImageUrl || '');
   } catch (error) {
     localStorage.removeItem(MENU_STORAGE_KEY);
   }
@@ -220,9 +310,13 @@ async function loadData() {
     try {
       await loadSupabaseData(client);
       setSyncStatus('Supabase bağlı: veriler canlı veritabanından geliyor.');
+      await Promise.allSettled([
+        loadSupabaseViewOptions(client),
+        loadSupabaseHeaderImage(client)
+      ]);
       return;
     } catch (error) {
-      setSyncStatus(`Supabase okunamadı: ${error.message}. Yerel demo verisi gösteriliyor.`);
+      setSyncStatus(`Supabase menü verisi okunamadı: ${error.message}. Yerel demo verisi gösteriliyor.`);
     }
   } else {
     setSyncStatus('Yerel demo modu: Supabase URL ve anon key girilmedi.');
@@ -232,7 +326,97 @@ async function loadData() {
 }
 
 function saveLocalData() {
-  localStorage.setItem(MENU_STORAGE_KEY, JSON.stringify(menuData));
+  localStorage.setItem(MENU_STORAGE_KEY, JSON.stringify({
+    ...menuData,
+    breadPanel,
+    headerImageUrl
+  }));
+}
+
+function loadViewOptions() {
+  try {
+    const savedOptions = JSON.parse(localStorage.getItem(VIEW_OPTIONS_STORAGE_KEY));
+    if (!savedOptions) return;
+
+    if (typeof savedOptions.showImages === 'boolean') viewOptions.showImages = savedOptions.showImages;
+    if (typeof savedOptions.showBread === 'boolean') viewOptions.showBread = savedOptions.showBread;
+  } catch (error) {
+    localStorage.removeItem(VIEW_OPTIONS_STORAGE_KEY);
+  }
+}
+
+function saveViewOptions() {
+  localStorage.setItem(VIEW_OPTIONS_STORAGE_KEY, JSON.stringify(viewOptions));
+}
+
+async function saveSupabaseBreadVisibility() {
+  const client = getSupabaseClient();
+  if (!client) return;
+
+  const response = await client
+    .from('bread_panel')
+    .upsert({
+      id: true,
+      title: breadPanel.title,
+      slogan: breadPanel.slogan,
+      description_1: breadPanel.description1,
+      description_2: breadPanel.description2,
+      is_active: viewOptions.showBread
+    }, { onConflict: 'id' });
+
+  if (response.error) throw response.error;
+}
+
+function applyViewOptions() {
+  document.body.classList.toggle('menu-images-hidden', !viewOptions.showImages);
+
+  const imagesToggle = document.getElementById('toggle-menu-images');
+  if (imagesToggle) imagesToggle.checked = viewOptions.showImages;
+
+  const breadToggle = document.getElementById('toggle-bread-section');
+  if (breadToggle) breadToggle.checked = viewOptions.showBread;
+
+  const breadSection = document.getElementById('bread-section');
+  if (breadSection) {
+    breadSection.hidden = false;
+    breadSection.classList.toggle('admin-bread-hidden-preview', !viewOptions.showBread);
+  }
+}
+
+function applyHeaderImage() {
+  document.querySelectorAll('.menu-header').forEach(header => {
+    header.style.backgroundImage = headerImageUrl ? getCSSImageUrl(headerImageUrl) : 'none';
+  });
+}
+
+function updateHeaderImagePreview() {
+  const preview = document.getElementById('header-image-preview');
+  const removeButton = document.getElementById('remove-header-image');
+  if (preview) {
+    preview.src = selectedHeaderImageData || headerImageUrl;
+    preview.hidden = !(selectedHeaderImageData || headerImageUrl);
+  }
+  if (removeButton) removeButton.disabled = !headerImageUrl && !selectedHeaderImageData;
+}
+
+function setupViewControls() {
+  const imagesToggle = document.getElementById('toggle-menu-images');
+  const breadToggle = document.getElementById('toggle-bread-section');
+
+  if (imagesToggle) {
+    imagesToggle.addEventListener('change', () => {
+      viewOptions.showImages = imagesToggle.checked;
+      applyViewOptions();
+      saveViewOptions();
+    });
+  }
+
+  if (breadToggle) {
+    breadToggle.addEventListener('change', async () => {
+      if (breadToggle.checked === viewOptions.showBread) return;
+      await toggleBreadPanelVisibility();
+    });
+  }
 }
 
 function renderMenuSection(items, containerId, category) {
@@ -302,6 +486,45 @@ function renderDrinks(items, containerId, category) {
   `).join('');
 }
 
+function renderBreadPanel() {
+  const section = document.getElementById('bread-section');
+  if (!section) return;
+
+  const title = section.querySelector('.column-title');
+  const card = section.querySelector('.bread-story-card');
+  if (title) {
+    title.textContent = breadPanel.title;
+    title.hidden = !viewOptions.showBread;
+  }
+  if (!card) return;
+
+  if (!viewOptions.showBread) {
+    card.innerHTML = `
+      <span class="admin-bread-status">Ekmeğimiz menüde gizli</span>
+      <div class="admin-inline-actions admin-inline-actions-always">
+        <button type="button" data-action="edit-bread">Düzenle</button>
+        <button type="button" data-action="toggle-bread" data-visible="false">Göster</button>
+      </div>
+    `;
+    return;
+  }
+
+  card.innerHTML = `
+    <h4 class="bread-slogan">${escapeHTML(breadPanel.slogan)}</h4>
+    <p class="bread-desc">${escapeHTML(breadPanel.description1)}</p>
+    <p class="bread-desc">${escapeHTML(breadPanel.description2)}</p>
+    <ul class="bread-bullet-list">
+      ${breadPanel.items.map(item => `
+        <li><span class="bullet-icon">${escapeHTML(item.icon)}</span> ${escapeHTML(item.text)}</li>
+      `).join('')}
+    </ul>
+    <div class="admin-inline-actions admin-inline-actions-always">
+      <button type="button" data-action="edit-bread">Düzenle</button>
+      <button type="button" data-action="toggle-bread" data-visible="${viewOptions.showBread ? 'true' : 'false'}">${viewOptions.showBread ? 'Gizle' : 'Göster'}</button>
+    </div>
+  `;
+}
+
 function renderAllergenLegend() {
   const container = document.getElementById('admin-allergen-legend-container');
   if (!container) return;
@@ -321,7 +544,11 @@ function renderPreview() {
   renderDrinks(menuData.hotDrinks, 'admin-hot-drinks-container', 'hot');
   renderDrinks(menuData.coldDrinks, 'admin-cold-drinks-container', 'cold');
   renderExtras();
+  renderBreadPanel();
   renderAllergenLegend();
+  applyHeaderImage();
+  updateHeaderImagePreview();
+  applyViewOptions();
 }
 
 function renderAllergenInputs() {
@@ -363,6 +590,64 @@ function resetDrinkForm() {
   document.getElementById('drink-id').value = '';
 }
 
+function hideItemEditorCards() {
+  ['header-image-card', 'product-editor-card', 'extra-editor-card', 'drink-editor-card'].forEach(cardId => {
+    const card = document.getElementById(cardId);
+    if (card) card.hidden = true;
+  });
+  updatePanelToggleButtons('');
+}
+
+function updatePanelToggleButtons(activeCardId) {
+  const buttonByCard = {
+    'header-image-card': 'header-image-button',
+    'product-editor-card': 'new-product-button',
+    'extra-editor-card': 'new-extra-button',
+    'drink-editor-card': 'new-drink-button'
+  };
+
+  Object.entries(buttonByCard).forEach(([cardId, buttonId]) => {
+    const button = document.getElementById(buttonId);
+    if (button) button.classList.toggle('is-active', cardId === activeCardId);
+  });
+}
+
+function showItemEditorCard(cardId) {
+  hideItemEditorCards();
+  const card = document.getElementById(cardId);
+  if (!card) return;
+  card.hidden = false;
+  updatePanelToggleButtons(cardId);
+  card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closeHeaderImageForm() {
+  selectedHeaderImageData = '';
+  selectedHeaderImageFile = null;
+  document.getElementById('header-image-input').value = '';
+  updateHeaderImagePreview();
+  document.getElementById('header-image-card').hidden = true;
+  updatePanelToggleButtons('');
+}
+
+function closeProductForm() {
+  resetProductForm();
+  document.getElementById('product-editor-card').hidden = true;
+  updatePanelToggleButtons('');
+}
+
+function closeExtraForm() {
+  resetExtraForm();
+  document.getElementById('extra-editor-card').hidden = true;
+  updatePanelToggleButtons('');
+}
+
+function closeDrinkForm() {
+  resetDrinkForm();
+  document.getElementById('drink-editor-card').hidden = true;
+  updatePanelToggleButtons('');
+}
+
 function fillProductForm(item, category) {
   document.getElementById('product-form-title').textContent = `${item.name} Düzenle`;
   document.getElementById('product-id').value = item.id;
@@ -382,7 +667,7 @@ function fillProductForm(item, category) {
   const preview = document.getElementById('product-image-preview');
   preview.src = currentProductImage;
   preview.hidden = !currentProductImage;
-  document.getElementById('product-editor-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  showItemEditorCard('product-editor-card');
 }
 
 function fillExtraForm(extra) {
@@ -391,7 +676,7 @@ function fillExtraForm(extra) {
   document.getElementById('extra-name').value = extra.name;
   document.getElementById('extra-price').value = extra.price;
   document.getElementById('extra-allergen').value = extra.allergen || '';
-  document.getElementById('extra-editor-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  showItemEditorCard('extra-editor-card');
 }
 
 function fillDrinkForm(drink, category) {
@@ -400,7 +685,131 @@ function fillDrinkForm(drink, category) {
   document.getElementById('drink-category').value = category;
   document.getElementById('drink-name').value = drink.name;
   document.getElementById('drink-price').value = drink.price;
-  document.getElementById('drink-editor-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  showItemEditorCard('drink-editor-card');
+}
+
+function fillBreadForm() {
+  document.getElementById('bread-editor-card').hidden = false;
+  document.getElementById('bread-title').value = breadPanel.title;
+  document.getElementById('bread-slogan').value = breadPanel.slogan;
+  document.getElementById('bread-description-1').value = breadPanel.description1;
+  document.getElementById('bread-description-2').value = breadPanel.description2;
+  document.getElementById('bread-item-1').value = breadPanel.items[0]?.text || '';
+  document.getElementById('bread-item-2').value = breadPanel.items[1]?.text || '';
+  document.getElementById('bread-item-3').value = breadPanel.items[2]?.text || '';
+  document.getElementById('bread-editor-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function hideBreadForm() {
+  document.getElementById('bread-editor-card').hidden = true;
+}
+
+function getBreadPanelFromForm() {
+  return normalizeBreadPanel({
+    title: document.getElementById('bread-title').value.trim(),
+    slogan: document.getElementById('bread-slogan').value.trim(),
+    description1: document.getElementById('bread-description-1').value.trim(),
+    description2: document.getElementById('bread-description-2').value.trim()
+  }, defaultBreadPanel.items.map((item, index) => ({
+    icon: item.icon,
+    text: document.getElementById(`bread-item-${index + 1}`).value.trim()
+  })));
+}
+
+async function saveBreadPanel() {
+  const client = getSupabaseClient();
+  breadPanel = getBreadPanelFromForm();
+
+  if (client) {
+    await saveSupabaseBreadVisibility();
+
+    const itemRows = breadPanel.items.map((item, index) => ({
+      id: BREAD_PANEL_ITEM_IDS[index],
+      icon: item.icon,
+      text: item.text,
+      sort_order: index + 1,
+      is_active: true
+    }));
+    const itemsResponse = await client.from('bread_panel_items').upsert(itemRows, { onConflict: 'id' });
+    if (itemsResponse.error) throw itemsResponse.error;
+  } else {
+    saveLocalData();
+  }
+
+  hideBreadForm();
+  await loadData();
+  renderPreview();
+}
+
+async function toggleBreadPanelVisibility() {
+  const previousValue = viewOptions.showBread;
+  viewOptions.showBread = !viewOptions.showBread;
+  applyViewOptions();
+  renderBreadPanel();
+  saveViewOptions();
+
+  try {
+    await saveSupabaseBreadVisibility();
+  } catch (error) {
+    viewOptions.showBread = previousValue;
+    applyViewOptions();
+    renderBreadPanel();
+    saveViewOptions();
+    alert(`Ekmeğimiz görünürlük ayarı kaydedilemedi: ${error.message}`);
+  }
+}
+
+async function uploadHeaderImage(client) {
+  if (!selectedHeaderImageFile) return headerImageUrl;
+
+  const safeName = selectedHeaderImageFile.name.toLowerCase().replace(/[^a-z0-9.]+/g, '-');
+  const filePath = `${Date.now()}-${safeName}`;
+  const uploadResponse = await client.storage.from(HEADER_STORAGE_BUCKET).upload(filePath, selectedHeaderImageFile, { upsert: false });
+  if (uploadResponse.error) throw uploadResponse.error;
+
+  return client.storage.from(HEADER_STORAGE_BUCKET).getPublicUrl(filePath).data.publicUrl;
+}
+
+async function saveHeaderImage() {
+  const client = getSupabaseClient();
+  if (!selectedHeaderImageFile && !selectedHeaderImageData) {
+    alert('Önce bir üst menü görseli seçin.');
+    return;
+  }
+
+  if (client) {
+    headerImageUrl = await uploadHeaderImage(client);
+    const response = await client
+      .from('menu_header')
+      .upsert({ id: true, image_url: headerImageUrl, is_active: true }, { onConflict: 'id' });
+    if (response.error) throw response.error;
+  } else {
+    headerImageUrl = selectedHeaderImageData;
+  }
+
+  selectedHeaderImageData = '';
+  selectedHeaderImageFile = null;
+  document.getElementById('header-image-input').value = '';
+  saveLocalData();
+  renderPreview();
+}
+
+async function removeHeaderImage() {
+  const client = getSupabaseClient();
+
+  if (client) {
+    const response = await client
+      .from('menu_header')
+      .upsert({ id: true, image_url: null, is_active: false }, { onConflict: 'id' });
+    if (response.error) throw response.error;
+  }
+
+  headerImageUrl = '';
+  selectedHeaderImageData = '';
+  selectedHeaderImageFile = null;
+  document.getElementById('header-image-input').value = '';
+  saveLocalData();
+  renderPreview();
 }
 
 async function uploadImageIfNeeded(client) {
@@ -480,6 +889,7 @@ async function saveProduct() {
   }
 
   resetProductForm();
+  hideItemEditorCards();
   await loadData();
   renderPreview();
 }
@@ -521,6 +931,7 @@ async function saveExtra() {
   }
 
   resetExtraForm();
+  hideItemEditorCards();
   await loadData();
   renderPreview();
 }
@@ -577,6 +988,7 @@ async function saveDrink() {
   }
 
   resetDrinkForm();
+  hideItemEditorCards();
   await loadData();
   renderPreview();
 }
@@ -765,9 +1177,11 @@ async function isLoggedIn() {
 
 async function init() {
   renderAllergenInputs();
+  loadViewOptions();
   await loadData();
   renderPreview();
   attachDragSorting();
+  setupViewControls();
 
   if (await isLoggedIn()) showDashboard();
   else showLogin();
@@ -788,6 +1202,8 @@ async function init() {
         errorEl.hidden = false;
         return;
       }
+      await loadData();
+      renderPreview();
       showDashboard();
       return;
     }
@@ -809,12 +1225,25 @@ async function init() {
     showLogin();
   });
 
-  document.getElementById('new-product-button').addEventListener('click', resetProductForm);
-  document.getElementById('new-extra-button').addEventListener('click', resetExtraForm);
-  document.getElementById('new-drink-button').addEventListener('click', resetDrinkForm);
-  document.getElementById('cancel-product-edit').addEventListener('click', resetProductForm);
-  document.getElementById('cancel-extra-edit').addEventListener('click', resetExtraForm);
-  document.getElementById('cancel-drink-edit').addEventListener('click', resetDrinkForm);
+  document.getElementById('header-image-button').addEventListener('click', () => {
+    showItemEditorCard('header-image-card');
+  });
+  document.getElementById('new-product-button').addEventListener('click', () => {
+    resetProductForm();
+    showItemEditorCard('product-editor-card');
+  });
+  document.getElementById('new-extra-button').addEventListener('click', () => {
+    resetExtraForm();
+    showItemEditorCard('extra-editor-card');
+  });
+  document.getElementById('new-drink-button').addEventListener('click', () => {
+    resetDrinkForm();
+    showItemEditorCard('drink-editor-card');
+  });
+  document.getElementById('cancel-bread-edit').addEventListener('click', hideBreadForm);
+  document.getElementById('cancel-product-edit').addEventListener('click', closeProductForm);
+  document.getElementById('cancel-extra-edit').addEventListener('click', closeExtraForm);
+  document.getElementById('cancel-drink-edit').addEventListener('click', closeDrinkForm);
 
   document.getElementById('product-image').addEventListener('change', (event) => {
     selectedImageFile = event.target.files[0] || null;
@@ -832,6 +1261,38 @@ async function init() {
       preview.hidden = false;
     });
     reader.readAsDataURL(selectedImageFile);
+  });
+
+  document.getElementById('header-image-input').addEventListener('change', (event) => {
+    selectedHeaderImageFile = event.target.files[0] || null;
+    selectedHeaderImageData = '';
+    updateHeaderImagePreview();
+
+    if (!selectedHeaderImageFile) return;
+
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+      selectedHeaderImageData = reader.result;
+      updateHeaderImagePreview();
+    });
+    reader.readAsDataURL(selectedHeaderImageFile);
+  });
+
+  document.getElementById('header-image-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    try {
+      await saveHeaderImage();
+    } catch (error) {
+      alert(`Üst menü görseli yüklenemedi: ${error.message}`);
+    }
+  });
+
+  document.getElementById('remove-header-image').addEventListener('click', async () => {
+    try {
+      await removeHeaderImage();
+    } catch (error) {
+      alert(`Üst menü görseli kaldırılamadı: ${error.message}`);
+    }
   });
 
   document.getElementById('product-form').addEventListener('submit', async (event) => {
@@ -861,11 +1322,29 @@ async function init() {
     }
   });
 
+  document.getElementById('bread-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    try {
+      await saveBreadPanel();
+    } catch (error) {
+      alert(`Ekmeğimiz kaydedilemedi: ${error.message}`);
+    }
+  });
+
   document.getElementById('admin-menu-card').addEventListener('click', async (event) => {
     const button = event.target.closest('button[data-action]');
     if (!button) return;
 
     const action = button.getAttribute('data-action');
+    if (action === 'edit-bread') {
+      fillBreadForm();
+      return;
+    }
+    if (action === 'toggle-bread') {
+      await toggleBreadPanelVisibility();
+      return;
+    }
+
     const productEl = button.closest('.admin-preview-item');
     const extraEl = button.closest('.admin-extra-row');
     const drinkEl = button.closest('.admin-drink-row');
