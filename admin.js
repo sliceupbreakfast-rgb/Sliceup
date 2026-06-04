@@ -91,7 +91,7 @@ const allergenNameTranslations = {
 };
 
 const viewOptions = {
-  showImages: true,
+  showImages: false,
   showBread: true
 };
 
