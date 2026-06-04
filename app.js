@@ -163,9 +163,35 @@ const defaultBreadPanel = {
 
 const MENU_STORAGE_KEY = 'sliceup-menu-data-v1';
 const VIEW_OPTIONS_STORAGE_KEY = 'sliceup-view-options-v1';
+const LANGUAGE_STORAGE_KEY = 'sliceup-language';
+const MENU_ITEM_SELECT = 'id, category, name, ingredients, story, price, image_url, sort_order, is_active, menu_item_allergens(allergen_id)';
+const MENU_ITEM_SELECT_WITH_ENGLISH = 'id, category, name, ingredients, ingredients_english, story, story_english, price, image_url, sort_order, is_active, menu_item_allergens(allergen_id)';
 let supabaseClient = null;
 let breadPanel = structuredClone(defaultBreadPanel);
 let headerImageUrl = '';
+let supportsEnglishIngredients = true;
+let currentLanguage = 'tr';
+
+const translations = {
+  saltyTitle: { tr: 'Tuzlu Dilimler', en: 'Salty Slices' },
+  saltyNote: { tr: 'Tuzlu dilimlerimiz zeytinli yeşil salata ile servis edilmektedir.', en: 'Our savory slices are served with a green salad with olives.' },
+  sweetTitle: { tr: 'Tatlı Dilimler', en: 'Sweet Slices' },
+  jarTitle: { tr: 'Kavanoz Tatlılar', en: 'Jar Desserts' },
+  extrasTitle: { tr: 'İlave etmek ister misiniz?', en: 'Would you like to add anything?' },
+  hotDrinksTitle: { tr: 'Sıcak İçecekler', en: 'Hot Drinks' },
+  coldDrinksTitle: { tr: 'Soğuk İçecekler', en: 'Cold Drinks' },
+  allergenAlert: { tr: 'Alerjen Uyarısı', en: 'Allergen Alert' },
+  storyHeading: { tr: 'Hikayemiz:', en: 'Product Story / Details' },
+  ingredientsHeading: { tr: 'İçindekiler:', en: 'Indegridients:' }
+};
+
+const allergenNameTranslations = {
+  egg: { en: 'Eggs' },
+  dairy: { en: "Cow's Milk" },
+  gluten: { en: 'Gluten' },
+  nuts: { en: 'Nuts' },
+  sesame: { en: 'Sesame' }
+};
 
 const viewOptions = {
   showImages: true,
@@ -182,6 +208,10 @@ function escapeHTML(value) {
   }[char]));
 }
 
+function formatPrice(price) {
+  return `${String(price ?? '').replace(/\s*₺\s*$/, '')} ₺`;
+}
+
 function getAllMenuItems() {
   return [...saltySlices, ...sweetSlices, ...jarDesserts];
 }
@@ -195,12 +225,18 @@ function getSupabaseClient() {
   return supabaseClient;
 }
 
+function isMissingEnglishIngredientsColumn(error) {
+  return /ingredients_english|story_english/i.test(`${error?.message || ''} ${error?.details || ''}`);
+}
+
 function mapSupabaseItem(item) {
   return normalizeMenuItem({
     id: item.id,
     name: item.name,
     ingredients: item.ingredients,
+    ingredients_en: item.ingredients_english,
     story: item.story,
+    story_english: item.story_english,
     price: item.price,
     image: item.image_url || '',
     allergens: (item.menu_item_allergens || []).map(row => row.allergen_id)
@@ -220,6 +256,7 @@ function mapSupabaseDrink(drink) {
   return normalizeDrinkOption({
     id: drink.id,
     name: drink.name,
+    drink_name: drink.drink_name,
     price: drink.price
   });
 }
@@ -234,7 +271,9 @@ function normalizeMenuItem(item, fallback = {}) {
     id: String(item.id || fallback.id || `item-${Date.now()}`),
     name: String(item.name ?? fallback.name ?? ''),
     ingredients: String(item.ingredients ?? fallback.ingredients ?? ''),
+    ingredients_en: String(item.ingredients_english ?? item.indegridients ?? item.ingredients_en ?? item.ingredientsEn ?? fallback.ingredients_english ?? fallback.indegridients ?? fallback.ingredients_en ?? fallback.ingredientsEn ?? ''),
     story: String(item.story ?? fallback.story ?? ''),
+    story_english: String(item.story_english ?? item.storyEnglish ?? fallback.story_english ?? fallback.storyEnglish ?? ''),
     price: Number.isFinite(savedPrice) ? savedPrice : (fallback.price || 0),
     allergens,
     image: item.image || fallback.image || ''
@@ -259,6 +298,7 @@ function normalizeDrinkOption(option, fallback = {}) {
   return {
     id: String(option.id || fallback.id || `drink-${Date.now()}`),
     name: String(option.name ?? fallback.name ?? ''),
+    drink_name: String(option.drink_name ?? option.drinkName ?? fallback.drink_name ?? fallback.drinkName ?? ''),
     price: Number.isFinite(savedPrice) ? savedPrice : (fallback.price || 0)
   };
 }
@@ -308,12 +348,14 @@ function applySavedDrinks(targetItems, savedDrinks) {
 }
 
 async function loadSupabaseMenuData(client) {
-  const [itemsResponse, extrasResponse, drinksResponse] = await Promise.all([
-    client
-      .from('menu_items')
-      .select('id, category, name, ingredients, story, price, image_url, sort_order, is_active, menu_item_allergens(allergen_id)')
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true }),
+  const menuItemsQuery = select => client
+    .from('menu_items')
+    .select(select)
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true });
+
+  let [itemsResponse, extrasResponse, drinksResponse] = await Promise.all([
+    menuItemsQuery(MENU_ITEM_SELECT_WITH_ENGLISH),
     client
       .from('extras')
       .select('id, name, price, allergen_id, sort_order, is_active')
@@ -321,10 +363,17 @@ async function loadSupabaseMenuData(client) {
       .order('sort_order', { ascending: true }),
     client
       .from('drinks')
-      .select('id, category, name, price, sort_order, is_active')
+      .select('id, category, name, drink_name, price, sort_order, is_active')
       .eq('is_active', true)
       .order('sort_order', { ascending: true })
   ]);
+
+  if (itemsResponse.error && isMissingEnglishIngredientsColumn(itemsResponse.error)) {
+    supportsEnglishIngredients = false;
+    itemsResponse = await menuItemsQuery(MENU_ITEM_SELECT);
+  } else {
+    supportsEnglishIngredients = true;
+  }
 
   if (itemsResponse.error) throw itemsResponse.error;
   if (extrasResponse.error) throw extrasResponse.error;
@@ -453,6 +502,58 @@ function saveViewOptions() {
   localStorage.setItem(VIEW_OPTIONS_STORAGE_KEY, JSON.stringify(viewOptions));
 }
 
+function loadLanguage() {
+  currentLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY) === 'en' ? 'en' : 'tr';
+}
+
+function saveLanguage() {
+  localStorage.setItem(LANGUAGE_STORAGE_KEY, currentLanguage);
+}
+
+function applyLanguage() {
+  document.documentElement.lang = currentLanguage === 'en' ? 'en' : 'tr';
+  document.querySelectorAll('[data-i18n-key]').forEach(element => {
+    const translation = translations[element.dataset.i18nKey]?.[currentLanguage];
+    if (translation) element.textContent = translation;
+  });
+
+  document.querySelectorAll('.language-toggle').forEach(button => {
+    button.textContent = currentLanguage === 'en' ? 'Türkçe Menü' : 'English Menu';
+    button.setAttribute('aria-pressed', currentLanguage === 'en' ? 'true' : 'false');
+  });
+}
+
+function setupLanguageToggle() {
+  document.querySelectorAll('.language-toggle').forEach(button => {
+    button.addEventListener('click', () => {
+      currentLanguage = currentLanguage === 'en' ? 'tr' : 'en';
+      saveLanguage();
+      renderMenuSections();
+      renderDrinkOptions(hotDrinks, 'hot-drinks-container');
+      renderDrinkOptions(coldDrinks, 'cold-drinks-container');
+      renderAllergenLegend();
+      applyLanguage();
+      if (modal.classList.contains('active') && modal.dataset.itemId) openItemModal(modal.dataset.itemId);
+    });
+  });
+}
+
+function getLocalizedIngredients(item) {
+  return currentLanguage === 'en' ? (item.ingredients_en || '') : item.ingredients;
+}
+
+function getLocalizedStory(item) {
+  return currentLanguage === 'en' ? (item.story_english || '') : item.story;
+}
+
+function getLocalizedDrinkName(drink) {
+  return currentLanguage === 'en' ? (drink.drink_name || '') : drink.name;
+}
+
+function getLocalizedAllergenName(cfg) {
+  return currentLanguage === 'en' ? (allergenNameTranslations[cfg.id]?.en || cfg.name) : cfg.name;
+}
+
 function applyViewOptions() {
   document.body.classList.toggle('menu-images-hidden', !viewOptions.showImages);
 
@@ -522,6 +623,8 @@ function renderMenuSection(items, containerId) {
 
   container.innerHTML = items.map(item => {
     const allergenBadges = (item.allergens || []).map(getAllergenBadgeHTML).join(' ');
+    const ingredients = getLocalizedIngredients(item);
+    const ingredientsClass = currentLanguage === 'en' ? 'menu-item-ingredients menu-item-ingredients-en' : 'menu-item-ingredients';
     const imageHTML = item.image
       ? `<img src="${escapeHTML(item.image)}" alt="${escapeHTML(item.name)}" class="menu-item-image">`
       : '';
@@ -531,15 +634,23 @@ function renderMenuSection(items, containerId) {
         <div class="menu-item-header">
           <h4 class="menu-item-name">${escapeHTML(item.name)}</h4>
           <span class="menu-item-dots"></span>
-          <span class="menu-item-price">${escapeHTML(item.price)}</span>
+          <span class="menu-item-price">${escapeHTML(formatPrice(item.price))}</span>
         </div>
         <div class="menu-item-body">
-          <p class="menu-item-ingredients">${escapeHTML(item.ingredients)}</p>
+          <div class="menu-item-ingredients-group">
+            <p class="${ingredientsClass}">${escapeHTML(ingredients)}</p>
+          </div>
           <div class="menu-item-allergens">${allergenBadges}</div>
         </div>
       </div>
     `;
   }).join('');
+}
+
+function renderMenuSections() {
+  renderMenuSection(saltySlices, 'salty-slices');
+  renderMenuSection(sweetSlices, 'sweet-slices');
+  renderMenuSection(jarDesserts, 'jar-desserts');
 }
 
 // Render Extras Options
@@ -555,7 +666,7 @@ function renderExtrasOptions() {
           <span>${escapeHTML(option.name)}</span>
           ${icon}
         </div>
-        <span class="option-price">${escapeHTML(option.price)}</span>
+        <span class="option-price">${escapeHTML(formatPrice(option.price))}</span>
       </div>
     `;
   }).join('');
@@ -568,9 +679,9 @@ function renderDrinkOptions(items, containerId) {
   container.innerHTML = items.map(option => `
     <div class="option-row">
       <div class="option-left">
-        <span>${escapeHTML(option.name)}</span>
+        <span>${escapeHTML(getLocalizedDrinkName(option))}</span>
       </div>
-      <span class="option-price">${escapeHTML(option.price)}</span>
+      <span class="option-price">${escapeHTML(formatPrice(option.price))}</span>
     </div>
   `).join('');
 }
@@ -604,7 +715,7 @@ function renderAllergenLegend() {
   container.innerHTML = Object.values(allergensConfig).map(cfg => `
     <div class="legend-item" title="${escapeHTML(cfg.description)}">
       <span class="legend-icon">${escapeHTML(cfg.icon)}</span>
-      <span class="legend-text">${escapeHTML(cfg.name)}</span>
+      <span class="legend-text">${escapeHTML(getLocalizedAllergenName(cfg))}</span>
     </div>
   `).join('');
 }
@@ -625,10 +736,11 @@ function openItemModal(itemId) {
   const item = allItems.find(i => i.id === itemId);
   if (!item) return;
 
+  modal.dataset.itemId = itemId;
   modalTitle.textContent = item.name;
-  modalStory.textContent = item.story;
-  modalIngredients.textContent = item.ingredients;
-  modalPrice.textContent = `${item.price} ₺`;
+  modalStory.textContent = getLocalizedStory(item);
+  modalIngredients.textContent = getLocalizedIngredients(item);
+  modalPrice.textContent = formatPrice(item.price);
   modalImage.hidden = !item.image;
   modalImage.src = item.image || '';
   modalImage.alt = item.image ? item.name : '';
@@ -644,7 +756,7 @@ function openItemModal(itemId) {
           return `
             <div class="modal-allergen-tag">
               <span class="tag-icon">${escapeHTML(cfg.icon)}</span>
-              <span class="tag-label">${escapeHTML(cfg.name)}</span>
+              <span class="tag-label">${escapeHTML(getLocalizedAllergenName(cfg))}</span>
             </div>
           `;
         }).join('')}
@@ -664,18 +776,18 @@ function openItemModal(itemId) {
 function closeItemModal() {
   modal.classList.remove('active');
   modalOverlay.classList.remove('active');
+  delete modal.dataset.itemId;
   document.body.style.overflow = ''; // Unlock background scrolling
 }
 
 // Initialize Application
 document.addEventListener('DOMContentLoaded', async () => {
   loadViewOptions();
+  loadLanguage();
   await loadMenuData();
 
   // Render components
-  renderMenuSection(saltySlices, 'salty-slices');
-  renderMenuSection(sweetSlices, 'sweet-slices');
-  renderMenuSection(jarDesserts, 'jar-desserts');
+  renderMenuSections();
   renderDrinkOptions(hotDrinks, 'hot-drinks-container');
   renderDrinkOptions(coldDrinks, 'cold-drinks-container');
   renderExtrasOptions();
@@ -683,7 +795,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderAllergenLegend();
   applyHeaderImage();
   applyViewOptions();
+  applyLanguage();
   setupViewControls();
+  setupLanguageToggle();
   setupViewOptionSync();
 
   // Attach event listeners for menu item clicks

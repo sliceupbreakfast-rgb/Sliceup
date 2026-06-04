@@ -1,10 +1,13 @@
 const MENU_STORAGE_KEY = 'sliceup-menu-data-v1';
 const VIEW_OPTIONS_STORAGE_KEY = 'sliceup-view-options-v1';
+const LANGUAGE_STORAGE_KEY = 'sliceup-language';
 const ADMIN_SESSION_KEY = 'sliceup-admin-session';
 const ADMIN_USERNAME = 'admin';
 const ADMIN_PASSWORD = 'admin123';
 const STORAGE_BUCKET = 'menu-images';
 const HEADER_STORAGE_BUCKET = 'menu-header-images';
+const MENU_ITEM_SELECT = 'id, category, name, ingredients, story, price, image_url, sort_order, is_active, menu_item_allergens(allergen_id)';
+const MENU_ITEM_SELECT_WITH_ENGLISH = 'id, category, name, ingredients, ingredients_english, story, story_english, price, image_url, sort_order, is_active, menu_item_allergens(allergen_id)';
 
 const allergensConfig = {
   egg: { id: 'egg', name: 'Yumurta', icon: '🥚', class: 'allergen-egg', description: 'Yumurta ve yumurta ürünleri içerir.' },
@@ -65,6 +68,27 @@ let selectedImageFile = null;
 let currentProductImage = '';
 let selectedHeaderImageData = '';
 let selectedHeaderImageFile = null;
+let supportsEnglishIngredients = true;
+let currentLanguage = 'tr';
+
+const translations = {
+  saltyTitle: { tr: 'Tuzlu Dilimler', en: 'Salty Slices' },
+  saltyNote: { tr: 'Tuzlu dilimlerimiz zeytinli yeşil salata ile servis edilmektedir.', en: 'Our savory slices are served with a green salad with olives.' },
+  sweetTitle: { tr: 'Tatlı Dilimler', en: 'Sweet Slices' },
+  jarTitle: { tr: 'Kavanoz Tatlılar', en: 'Jar Desserts' },
+  extrasTitle: { tr: 'İlave etmek ister misiniz?', en: 'Would you like to add anything?' },
+  hotDrinksTitle: { tr: 'Sıcak İçecekler', en: 'Hot Drinks' },
+  coldDrinksTitle: { tr: 'Soğuk İçecekler', en: 'Cold Drinks' },
+  allergenAlert: { tr: 'Alerjen Uyarısı', en: 'Allergen Alert' }
+};
+
+const allergenNameTranslations = {
+  egg: { en: 'Eggs' },
+  dairy: { en: "Cow's Milk" },
+  gluten: { en: 'Gluten' },
+  nuts: { en: 'Nuts' },
+  sesame: { en: 'Sesame' }
+};
 
 const viewOptions = {
   showImages: true,
@@ -81,6 +105,10 @@ function escapeHTML(value) {
   }[char]));
 }
 
+function formatPrice(price) {
+  return `${String(price ?? '').replace(/\s*₺\s*$/, '')} ₺`;
+}
+
 function getSupabaseClient() {
   const config = window.SLICEUP_SUPABASE_CONFIG || {};
   const hasConfig = config.url && config.anonKey && !config.url.includes('YOUR_SUPABASE') && !config.anonKey.includes('YOUR_SUPABASE');
@@ -88,6 +116,10 @@ function getSupabaseClient() {
   if (!hasConfig || !window.supabase) return null;
   if (!supabaseClient) supabaseClient = window.supabase.createClient(config.url, config.anonKey);
   return supabaseClient;
+}
+
+function isMissingEnglishIngredientsColumn(error) {
+  return /ingredients_english|story_english/i.test(`${error?.message || ''} ${error?.details || ''}`);
 }
 
 function setSyncStatus(message) {
@@ -147,7 +179,9 @@ function normalizeItem(item) {
     id: String(item.id),
     name: String(item.name || ''),
     ingredients: String(item.ingredients || ''),
+    ingredients_en: String(item.ingredients_english || item.indegridients || item.ingredients_en || item.ingredientsEn || ''),
     story: String(item.story || ''),
+    story_english: String(item.story_english || item.storyEnglish || ''),
     price: Number(item.price) || 0,
     allergens: Array.isArray(item.allergens) ? item.allergens.filter(id => allergensConfig[id]) : [],
     image: item.image || item.image_url || '',
@@ -173,6 +207,7 @@ function normalizeDrink(drink) {
   return {
     id: String(drink.id || `drink-${Date.now()}`),
     name: String(drink.name || ''),
+    drink_name: String(drink.drink_name || drink.drinkName || ''),
     price: Number(drink.price) || 0,
     sort_order: Number.isFinite(sortOrder) ? sortOrder : 0
   };
@@ -200,12 +235,14 @@ function getCSSImageUrl(url) {
 }
 
 async function loadSupabaseData(client) {
-  const [itemsResponse, extrasResponse, drinksResponse] = await Promise.all([
-    client
-      .from('menu_items')
-      .select('id, category, name, ingredients, story, price, image_url, sort_order, is_active, menu_item_allergens(allergen_id)')
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true }),
+  const menuItemsQuery = select => client
+    .from('menu_items')
+    .select(select)
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true });
+
+  let [itemsResponse, extrasResponse, drinksResponse] = await Promise.all([
+    menuItemsQuery(MENU_ITEM_SELECT_WITH_ENGLISH),
     client
       .from('extras')
       .select('id, name, price, allergen_id, sort_order, is_active')
@@ -213,10 +250,17 @@ async function loadSupabaseData(client) {
       .order('sort_order', { ascending: true }),
     client
       .from('drinks')
-      .select('id, category, name, price, sort_order, is_active')
+      .select('id, category, name, drink_name, price, sort_order, is_active')
       .eq('is_active', true)
       .order('sort_order', { ascending: true })
   ]);
+
+  if (itemsResponse.error && isMissingEnglishIngredientsColumn(itemsResponse.error)) {
+    supportsEnglishIngredients = false;
+    itemsResponse = await menuItemsQuery(MENU_ITEM_SELECT);
+  } else {
+    supportsEnglishIngredients = true;
+  }
 
   if (itemsResponse.error) throw itemsResponse.error;
   if (extrasResponse.error) throw extrasResponse.error;
@@ -309,7 +353,9 @@ async function loadData() {
   if (client) {
     try {
       await loadSupabaseData(client);
-      setSyncStatus('Supabase bağlı: veriler canlı veritabanından geliyor.');
+      setSyncStatus(supportsEnglishIngredients
+        ? 'Supabase bağlı: veriler canlı veritabanından geliyor.'
+        : 'Supabase bağlı: ingredients_english veya story_english kolonu olmadığı için İngilizce alanlar canlı veritabanına kaydedilmez.');
       await Promise.allSettled([
         loadSupabaseViewOptions(client),
         loadSupabaseHeaderImage(client)
@@ -347,6 +393,46 @@ function loadViewOptions() {
 
 function saveViewOptions() {
   localStorage.setItem(VIEW_OPTIONS_STORAGE_KEY, JSON.stringify(viewOptions));
+}
+
+function loadLanguage() {
+  currentLanguage = localStorage.getItem(LANGUAGE_STORAGE_KEY) === 'en' ? 'en' : 'tr';
+}
+
+function saveLanguage() {
+  localStorage.setItem(LANGUAGE_STORAGE_KEY, currentLanguage);
+}
+
+function applyLanguage() {
+  document.documentElement.lang = currentLanguage === 'en' ? 'en' : 'tr';
+  document.querySelectorAll('[data-i18n-key]').forEach(element => {
+    const translation = translations[element.dataset.i18nKey]?.[currentLanguage];
+    if (translation) element.textContent = translation;
+  });
+
+  document.querySelectorAll('.language-toggle').forEach(button => {
+    button.textContent = currentLanguage === 'en' ? 'Türkçe' : 'English';
+    button.setAttribute('aria-pressed', currentLanguage === 'en' ? 'true' : 'false');
+  });
+}
+
+function setupLanguageToggle() {
+  document.querySelectorAll('.language-toggle').forEach(button => {
+    button.addEventListener('click', () => {
+      currentLanguage = currentLanguage === 'en' ? 'tr' : 'en';
+      saveLanguage();
+      renderPreview();
+      applyLanguage();
+    });
+  });
+}
+
+function getLocalizedDrinkName(drink) {
+  return currentLanguage === 'en' ? (drink.drink_name || '') : drink.name;
+}
+
+function getLocalizedAllergenName(cfg) {
+  return currentLanguage === 'en' ? (allergenNameTranslations[cfg.id]?.en || cfg.name) : cfg.name;
 }
 
 async function saveSupabaseBreadVisibility() {
@@ -425,6 +511,9 @@ function renderMenuSection(items, containerId, category) {
 
   container.innerHTML = items.map(item => {
     const imageHTML = item.image ? `<img src="${escapeHTML(item.image)}" alt="${escapeHTML(item.name)}" class="menu-item-image">` : '';
+    const ingredientsEnHTML = item.ingredients_en
+      ? `<p class="menu-item-ingredients-en">${escapeHTML(item.ingredients_en)}</p>`
+      : '';
     return `
       <div class="menu-item admin-preview-item" data-id="${escapeHTML(item.id)}" data-category="${escapeHTML(category)}" draggable="true">
         <span class="admin-drag-handle" title="Sürükleyerek sırala">Sırala</span>
@@ -432,10 +521,13 @@ function renderMenuSection(items, containerId, category) {
         <div class="menu-item-header">
           <h4 class="menu-item-name">${escapeHTML(item.name)}</h4>
           <span class="menu-item-dots"></span>
-          <span class="menu-item-price">${escapeHTML(item.price)}</span>
+          <span class="menu-item-price">${escapeHTML(formatPrice(item.price))}</span>
         </div>
         <div class="menu-item-body">
-          <p class="menu-item-ingredients">${escapeHTML(item.ingredients)}</p>
+          <div class="menu-item-ingredients-group">
+            <p class="menu-item-ingredients">${escapeHTML(item.ingredients)}</p>
+            ${ingredientsEnHTML}
+          </div>
           <div class="menu-item-allergens">${(item.allergens || []).map(getAllergenBadgeHTML).join(' ')}</div>
         </div>
         <div class="admin-inline-actions">
@@ -458,7 +550,7 @@ function renderExtras() {
         <span>${escapeHTML(extra.name)}</span>
         ${extra.allergen ? getAllergenBadgeHTML(extra.allergen) : ''}
       </div>
-      <span class="option-price">${escapeHTML(extra.price)}</span>
+      <span class="option-price">${escapeHTML(formatPrice(extra.price))}</span>
       <div class="admin-inline-actions">
         <button type="button" data-action="edit-extra">Düzenle</button>
         <button type="button" data-action="delete-extra">Sil</button>
@@ -475,9 +567,9 @@ function renderDrinks(items, containerId, category) {
     <div class="option-row admin-drink-row" data-id="${escapeHTML(drink.id)}" data-category="${escapeHTML(category)}" draggable="true">
       <span class="admin-drag-handle" title="Sürükleyerek sırala">Sırala</span>
       <div class="option-left">
-        <span>${escapeHTML(drink.name)}</span>
+        <span>${escapeHTML(getLocalizedDrinkName(drink))}</span>
       </div>
-      <span class="option-price">${escapeHTML(drink.price)}</span>
+      <span class="option-price">${escapeHTML(formatPrice(drink.price))}</span>
       <div class="admin-inline-actions">
         <button type="button" data-action="edit-drink">Düzenle</button>
         <button type="button" data-action="delete-drink">Sil</button>
@@ -532,7 +624,7 @@ function renderAllergenLegend() {
   container.innerHTML = Object.values(allergensConfig).map(cfg => `
     <div class="legend-item" title="${escapeHTML(cfg.description)}">
       <span class="legend-icon">${escapeHTML(cfg.icon)}</span>
-      <span class="legend-text">${escapeHTML(cfg.name)}</span>
+      <span class="legend-text">${escapeHTML(getLocalizedAllergenName(cfg))}</span>
     </div>
   `).join('');
 }
@@ -655,7 +747,9 @@ function fillProductForm(item, category) {
   document.getElementById('product-name').value = item.name;
   document.getElementById('product-price').value = item.price;
   document.getElementById('product-ingredients').value = item.ingredients;
+  document.getElementById('product-ingredients-en').value = item.ingredients_en || '';
   document.getElementById('product-story').value = item.story;
+  document.getElementById('product-story-en').value = item.story_english || '';
   document.querySelectorAll('#product-allergens input').forEach(input => {
     input.checked = (item.allergens || []).includes(input.value);
   });
@@ -683,6 +777,7 @@ function fillDrinkForm(drink, category) {
   document.getElementById('drink-form-title').textContent = `${drink.name} Düzenle`;
   document.getElementById('drink-id').value = drink.id;
   document.getElementById('drink-category').value = category;
+  document.getElementById('drink-name-en').value = drink.drink_name || '';
   document.getElementById('drink-name').value = drink.name;
   document.getElementById('drink-price').value = drink.price;
   showItemEditorCard('drink-editor-card');
@@ -839,7 +934,9 @@ async function saveProduct() {
     name: document.getElementById('product-name').value.trim(),
     price: Number(document.getElementById('product-price').value) || 0,
     ingredients: document.getElementById('product-ingredients').value.trim(),
+    ingredients_en: document.getElementById('product-ingredients-en').value.trim(),
     story: document.getElementById('product-story').value.trim(),
+    story_english: document.getElementById('product-story-en').value.trim(),
     allergens: selectedAllergens,
     image: selectedImageData || currentProductImage,
     sort_order: existingItem?.sort_order || (oldIndex >= 0 ? oldIndex + 1 : menuData[newCategoryKey].length + 1)
@@ -856,14 +953,30 @@ async function saveProduct() {
       image_url: imageUrl,
       is_active: true
     };
+    if (supportsEnglishIngredients) {
+      payload.ingredients_english = item.ingredients_en;
+      payload.story_english = item.story_english;
+    }
 
     let itemId = id;
     if (id) {
-      const updateResponse = await client.from('menu_items').update(payload).eq('id', id);
+      let updateResponse = await client.from('menu_items').update(payload).eq('id', id);
+      if (updateResponse.error && supportsEnglishIngredients && isMissingEnglishIngredientsColumn(updateResponse.error)) {
+        supportsEnglishIngredients = false;
+        delete payload.ingredients_english;
+        delete payload.story_english;
+        updateResponse = await client.from('menu_items').update(payload).eq('id', id);
+      }
       if (updateResponse.error) throw updateResponse.error;
     } else {
       payload.sort_order = menuData[newCategoryKey].length + 1;
-      const insertResponse = await client.from('menu_items').insert(payload).select('id').single();
+      let insertResponse = await client.from('menu_items').insert(payload).select('id').single();
+      if (insertResponse.error && supportsEnglishIngredients && isMissingEnglishIngredientsColumn(insertResponse.error)) {
+        supportsEnglishIngredients = false;
+        delete payload.ingredients_english;
+        delete payload.story_english;
+        insertResponse = await client.from('menu_items').insert(payload).select('id').single();
+      }
       if (insertResponse.error) throw insertResponse.error;
       itemId = insertResponse.data.id;
     }
@@ -959,6 +1072,7 @@ async function saveDrink() {
   const drink = {
     id: id || `${category}-drink-${Date.now()}`,
     name: document.getElementById('drink-name').value.trim(),
+    drink_name: document.getElementById('drink-name-en').value.trim(),
     price: Number(document.getElementById('drink-price').value) || 0,
     sort_order: existingDrink?.sort_order || (oldIndex >= 0 ? oldIndex + 1 : menuData[newCategoryKey].length + 1)
   };
@@ -967,6 +1081,7 @@ async function saveDrink() {
     const payload = {
       category,
       name: drink.name,
+      drink_name: drink.drink_name,
       price: drink.price,
       is_active: true
     };
@@ -1178,10 +1293,13 @@ async function isLoggedIn() {
 async function init() {
   renderAllergenInputs();
   loadViewOptions();
+  loadLanguage();
   await loadData();
   renderPreview();
   attachDragSorting();
   setupViewControls();
+  applyLanguage();
+  setupLanguageToggle();
 
   if (await isLoggedIn()) showDashboard();
   else showLogin();

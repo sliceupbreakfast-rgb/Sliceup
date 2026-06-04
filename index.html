@@ -20,6 +20,8 @@
     <a href="admin.html" class="auth-button">Admin Girişi</a>
   </div>
 
+  <button type="button" id="language-toggle" class="auth-button language-toggle menu-language-toggle">English Menu</button>
+
   <!-- Interactive Background and Menu Board -->
   <div class="app-container">
     <div class="page-lemon-left"></div>
@@ -35,16 +37,16 @@
         
         <!-- Salty Slices Section -->
         <section class="menu-section">
-          <h3 class="section-title">Tuzlu Dilimler</h3>
+          <h3 class="section-title" data-i18n-key="saltyTitle">Tuzlu Dilimler</h3>
           <div class="menu-section-grid" id="salty-slices">
             <!-- Dynamically populated via JS -->
           </div>
-          <p class="section-note">Tuzlu dilimlerimiz zeytinli yeşil salata ile servis edilmektedir.</p>
+          <p class="section-note" data-i18n-key="saltyNote">Tuzlu dilimlerimiz zeytinli yeşil salata ile servis edilmektedir.</p>
         </section>
 
         <!-- Sweet Slices Section -->
         <section class="menu-section section-with-divider" id="section-sweet-slices">
-          <h3 class="section-title">Tatlı Dilimler</h3>
+          <h3 class="section-title" data-i18n-key="sweetTitle">Tatlı Dilimler</h3>
           <div class="menu-section-grid" id="sweet-slices">
             <!-- Dynamically populated via JS -->
           </div>
@@ -53,7 +55,7 @@
         <!-- Footer Stack: Extras -->
         <div class="menu-footer-grid">
           <section class="footer-column">
-            <h3 class="column-title">İlave etmek ister misiniz?</h3>
+            <h3 class="column-title" data-i18n-key="extrasTitle">İlave etmek ister misiniz?</h3>
             <div class="options-list" id="extras-options-container">
               <!-- Dynamically populated via JS -->
             </div>
@@ -61,8 +63,8 @@
 
         </div>
 
-        <section class="menu-section section-with-divider">
-          <h3 class="section-title">Kavanoz Tatlılar</h3>
+        <section class="menu-section section-with-divider" id="section-jar-desserts">
+          <h3 class="section-title" data-i18n-key="jarTitle">Kavanoz Tatlılar</h3>
           <div class="menu-section-grid" id="jar-desserts">
             <!-- Dynamically populated via JS -->
           </div>
@@ -70,14 +72,14 @@
 
         <div class="drinks-grid" id="section-drinks">
           <section class="footer-column">
-            <h3 class="column-title">Sıcak İçecekler</h3>
+            <h3 class="column-title" data-i18n-key="hotDrinksTitle">Sıcak İçecekler</h3>
             <div class="options-list" id="hot-drinks-container">
               <!-- Dynamically populated via JS -->
             </div>
           </section>
 
           <section class="footer-column">
-            <h3 class="column-title">Soğuk İçecekler</h3>
+            <h3 class="column-title" data-i18n-key="coldDrinksTitle">Soğuk İçecekler</h3>
             <div class="options-list" id="cold-drinks-container">
               <!-- Dynamically populated via JS -->
             </div>
@@ -86,7 +88,7 @@
 
         <!-- Allergen Legend Footer -->
         <footer class="allergen-footer">
-          <span class="allergen-title">Alerjen Uyarısı</span>
+          <span class="allergen-title" data-i18n-key="allergenAlert">Alerjen Uyarısı</span>
           <div class="allergen-legend" id="allergen-legend-container">
             <!-- Dynamically populated via JS -->
           </div>
@@ -111,13 +113,13 @@
       
       <!-- Detailed Story -->
       <div class="modal-story-section">
-        <h5>Hikayemiz:</h5>
+        <h5 data-i18n-key="storyHeading">Hikayemiz:</h5>
         <p id="modal-story" class="modal-story">Aileden gelen samimi ve sıcak bir hikaye...</p>
       </div>
 
       <!-- Ingredients -->
       <div class="modal-ingredients-section">
-        <h5>İçindekiler:</h5>
+        <h5 data-i18n-key="ingredientsHeading">İçindekiler:</h5>
         <p id="modal-ingredients" class="modal-ingredients">Malzeme detayları listesi.</p>
       </div>
 

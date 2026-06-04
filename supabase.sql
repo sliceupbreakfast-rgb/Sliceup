@@ -19,7 +19,10 @@ create table if not exists public.menu_items (
   category text not null check (category in ('salty', 'sweet', 'jar')),
   name text not null,
   ingredients text not null default '',
+  indegridients text not null default '',
+  ingredients_english text not null default '',
   story text not null default '',
+  story_english text not null default '',
   price numeric(10,2) not null default 0,
   image_url text,
   sort_order integer not null default 0,
@@ -27,6 +30,13 @@ create table if not exists public.menu_items (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.menu_items
+  add column if not exists indegridients text not null default '';
+
+alter table public.menu_items
+  add column if not exists ingredients_english text not null default '',
+  add column if not exists story_english text not null default '';
 
 do $$
 begin
@@ -148,86 +158,6 @@ drop trigger if exists menu_header_set_updated_at on public.menu_header;
 create trigger menu_header_set_updated_at
 before update on public.menu_header
 for each row execute function public.set_updated_at();
-
-insert into public.allergens (id, name, icon, description, badge_class, sort_order) values
-  ('egg', 'Yumurta', '🥚', 'Yumurta ve yumurta ürünleri içerir.', 'allergen-egg', 1),
-  ('dairy', 'İnek Sütü', '🥛', 'İnek sütü, peynir, kaymak, tereyağı veya diğer süt ürünlerini içerir.', 'allergen-dairy', 2),
-  ('gluten', 'Gluten', '🌾', 'Buğday, çavdar, yulaf veya diğer gluten içeren tahıllar barındırır.', 'allergen-gluten', 3),
-  ('nuts', 'Kuru yemiş', '🥜', 'Ceviz, badem, fındık veya diğer sert kabuklu meyveler içerir.', 'allergen-nuts', 4),
-  ('sesame', 'Susam', '◌', 'Susam ve susam ürünleri içerir.', 'allergen-sesame', 5)
-on conflict (id) do update set
-  name = excluded.name,
-  icon = excluded.icon,
-  description = excluded.description,
-  badge_class = excluded.badge_class,
-  sort_order = excluded.sort_order;
-
-insert into public.menu_items (id, category, name, ingredients, story, price, image_url, sort_order, is_active) values
-  ('00000000-0000-0000-0000-000000000101', 'salty', 'Ata Mirası', 'İpeksi humus tabanı, çemensiz pastırma dilimleri, kavrulmuş file badem', 'Babamın Kayseri seyahatlerinden getirdiği o mis kokulu çemensiz pastırma, annemin elleriyle yaptığı ipeksi humus yatağında can bulurdu. Üzerine serptiğimiz çıtır bademlerle, her lokmada çocukluğumuzun bayram sabahlarına döneriz.', 450, null, 1, true),
-  ('00000000-0000-0000-0000-000000000102', 'salty', 'Edremit Esintisi', 'Zeytin ezmesi, tarla domatesi, salatalık, tam yağlı beyaz peynir, taze kekik', 'Halamızın Edremit zeytinliğinden süzülen zeytinyağı ve ezme, bahçemizden gün ağarırken kopardığımız sulu domateslerle buluşurdu. Annem taze kekiği ovalarken, mutfağı çocukluğumuzun o tatlı telaşı kaplardı.', 450, null, 2, true),
-  ('00000000-0000-0000-0000-000000000103', 'salty', 'Pazar Avlusu', 'Avokado sos, hindi füme, çırpılmış yumurta, krem peynir', 'Kardeşimizin mutfakta ilk kez şefliğe soyunduğu o unutulmaz Pazar sabahı... Geleneksel sofraya modern bir dokunuş katıp avokado sosu çırpılmış yumurta ve hindi füme ile birleştirmişti. O günden beri neşemiz oldu.', 450, null, 3, true),
-  ('00000000-0000-0000-0000-000000000104', 'salty', 'Anne Eli Patlıcanlı', 'Ev yapımı patlıcanlı kahvaltılık sos, Erzurum çeçil peyniri, ince kıyılmış maydanoz', 'Annemin her sonbahar kışa hazırlık için odun ateşinde közlediği o efsanevi patlıcan sosu... Erzurum''dan gelen tel tel çeçil peyniri ve taze maydanozla birleştiğinde çocukluğumuzun sıcak soba başı kahvaltıları canlanır.', 450, null, 4, true),
-  ('00000000-0000-0000-0000-000000000105', 'salty', 'Bodrum Güneşi', 'Avokado sos, zeytinyağda bekletilmiş kuru domates, Bodrum tulumu, çörek otu', 'Yaz tatillerinde Bodrum''un dar sokaklarındaki o kahvaltıcıdan aldığımız tulum peynirinin lezzeti... Annemin zeytinyağı ve çörek otuyla dinlendirdiği kuru domateslerle birleştiğinde adeta yaz hiç bitmesin isterdik.', 450, null, 5, true),
-  ('00000000-0000-0000-0000-000000000106', 'salty', 'Trakya Esintisi', 'Yeşil biberli lor kavurması, çeri domates, iri ceviz parçaları', 'Anneannem Trakya''nın köy biberlerini tereyağında hafifçe çevirir, içine taze lor peynirini bırakırdı. Sobanın üzerinde çıtırdayan ekmeklerin üzerine sürdüğümüz o sıcak lor kavurması, çocukluğumuzun en büyük mutluluğuydu.', 450, null, 6, true),
-  ('00000000-0000-0000-0000-000000000107', 'salty', 'Balkon Bahçesi', 'Ev yapımı fesleğenli pesto sos, çeri domates, bebek roka, taze mozerella', 'Evimizin küçük balkonundaki saksılardan ellerimizle topladığımız o mis kokulu fesleğenleri tahta havanda ezerek yaptığımız pesto sos... Taze mozzarella ve çıtır rokalarla tabakta adeta bir bahçe şöleni sunardı.', 450, null, 7, true),
-  ('00000000-0000-0000-0000-000000000201', 'sweet', 'Yayla Esintisi', 'Kaymak, süzme çiçek balı, iri ceviz parçaları', 'Dedemin Artvin yaylalarından binbir emekle getirdiği o hakiki süzme çiçek balı... Taze süt kaymağı ve cevizle buluştuğunda, çocukken kaşık kaşık yediğimiz en tatlı, en saf ödülümüzdü.', 450, null, 1, true),
-  ('00000000-0000-0000-0000-000000000202', 'sweet', 'Çocukluk Düşü', 'Kaymak, Nutella, taze muz veya çilek dilimleri', 'Hafta sonu karnemizi getirdiğimizde ya da uslu durduğumuzda annemin bizi ödüllendirdiği o şımartan dilim... Çikolata ve kaymağın uyumu, taze çilek ve muzun kokusuyla birleştiğinde en saf çocukluk rüyamız olurdu.', 450, null, 2, true),
-  ('00000000-0000-0000-0000-000000000203', 'sweet', 'Kazan Dibi Reçeli', 'French toast (tereyağında mühürlenmiş brioche ekmeği), ev yapımı mevsim reçelleri', 'Büyükannemin bahçeden topladığı vişneleri, incirleri bakır kazanlarda kaynatarak yaptığı o parlak reçeller... Tereyağında mühürlenmiş yumuşacık brioche ekmeğiyle birleştiğinde pazar sabahı ritüelimiz tamamlanırdı.', 450, null, 3, true)
-on conflict (id) do nothing;
-
-insert into public.menu_item_allergens (menu_item_id, allergen_id) values
-  ('00000000-0000-0000-0000-000000000101', 'gluten'),
-  ('00000000-0000-0000-0000-000000000101', 'nuts'),
-  ('00000000-0000-0000-0000-000000000102', 'dairy'),
-  ('00000000-0000-0000-0000-000000000103', 'egg'),
-  ('00000000-0000-0000-0000-000000000103', 'dairy'),
-  ('00000000-0000-0000-0000-000000000104', 'dairy'),
-  ('00000000-0000-0000-0000-000000000105', 'dairy'),
-  ('00000000-0000-0000-0000-000000000106', 'dairy'),
-  ('00000000-0000-0000-0000-000000000106', 'nuts'),
-  ('00000000-0000-0000-0000-000000000107', 'dairy'),
-  ('00000000-0000-0000-0000-000000000107', 'nuts'),
-  ('00000000-0000-0000-0000-000000000201', 'dairy'),
-  ('00000000-0000-0000-0000-000000000201', 'nuts'),
-  ('00000000-0000-0000-0000-000000000202', 'dairy'),
-  ('00000000-0000-0000-0000-000000000202', 'nuts'),
-  ('00000000-0000-0000-0000-000000000203', 'egg'),
-  ('00000000-0000-0000-0000-000000000203', 'dairy'),
-  ('00000000-0000-0000-0000-000000000203', 'gluten')
-on conflict do nothing;
-
-insert into public.extras (id, name, price, allergen_id, sort_order, is_active) values
-  ('00000000-0000-0000-0000-000000000301', 'Çırpılmış yumurta', 450, 'egg', 1, true),
-  ('00000000-0000-0000-0000-000000000302', 'Bacon (domuz pastırması)', 450, null, 2, true)
-on conflict (id) do nothing;
-
-insert into public.drinks (id, category, name, price, sort_order, is_active) values
-  ('00000000-0000-0000-0000-000000000501', 'hot', 'Türk Kahvesi', 0, 1, true),
-  ('00000000-0000-0000-0000-000000000502', 'hot', 'Çay', 0, 2, true),
-  ('00000000-0000-0000-0000-000000000601', 'cold', 'Ev Yapımı Limonata', 0, 1, true),
-  ('00000000-0000-0000-0000-000000000602', 'cold', 'Soğuk Kahve', 0, 2, true)
-on conflict (id) do nothing;
-
-insert into public.bread_panel (id, title, slogan, description_1, description_2, is_active) values
-  (
-    true,
-    'Ekmeğimiz',
-    'Ateşin ve Sabrın Çıtır Eseri: Her Dilimde Yaşayan Gerçek Ekşi Maya Kokusu',
-    'Taş değirmende öğütülen unlarla, uzun fermantasyon süreciyle ve geleneksel yöntemlerle hazırlanır. Dışı çıtır, içi yoğun aromalı ve doğal dokusuyla gerçek köy ekmeği lezzetini sunar.',
-    'Katkı maddesi içermez. Sindirim dostu yapısı ve güçlü aromasıyla kahvaltılardan ana yemeklere kadar her sofraya yakışır.',
-    true
-  )
-on conflict (id) do nothing;
-
-insert into public.bread_panel_items (id, icon, text, sort_order, is_active) values
-  ('00000000-0000-0000-0000-000000000401', '🔥', 'Günlük taze çıkar.', 1, true),
-  ('00000000-0000-0000-0000-000000000402', '🍞', 'Doğal ekşi maya ile fermente edilir.', 2, true),
-  ('00000000-0000-0000-0000-000000000403', '🌾', 'Geleneksel köy usulü üretim.', 3, true)
-on conflict (id) do nothing;
-
-insert into public.menu_header (id, image_url, is_active) values
-  (true, null, false)
-on conflict (id) do nothing;
 
 insert into storage.buckets (id, name, public)
 values ('menu-images', 'menu-images', true)

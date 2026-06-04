@@ -28,6 +28,7 @@
         <button type="submit" class="admin-save-button">Giriş Yap</button>
       </form>
       <a href="index.html" class="admin-back-link">Menüye dön</a>
+      <button type="button" class="admin-outline-button language-toggle">English</button>
     </section>
 
     <section class="admin-dashboard admin-menu-dashboard" id="admin-dashboard" hidden>
@@ -38,6 +39,7 @@
           <p id="admin-sync-status" class="admin-sync-status">Veri kaynağı hazırlanıyor...</p>
         </div>
         <div class="admin-header-actions">
+          <button type="button" id="admin-language-toggle" class="admin-outline-button language-toggle">English</button>
           <div class="menu-view-controls admin-view-controls" aria-label="Menü görünüm ayarları">
             <label class="menu-switch">
               <span>Resimler</span>
@@ -63,43 +65,43 @@
 
             <div class="menu-content">
               <section class="menu-section">
-                <h3 class="section-title">Tuzlu Dilimler</h3>
-                <p class="section-note">Tuzlu dilimlerimiz zeytinli yeşil salata ile servis edilmektedir.</p>
+                <h3 class="section-title" data-i18n-key="saltyTitle">Tuzlu Dilimler</h3>
+                <p class="section-note" data-i18n-key="saltyNote">Tuzlu dilimlerimiz zeytinli yeşil salata ile servis edilmektedir.</p>
                 <div class="menu-section-grid" id="admin-salty-slices"></div>
               </section>
 
               <section class="menu-section">
-                <h3 class="section-title">Tatlı Dilimler</h3>
+                <h3 class="section-title" data-i18n-key="sweetTitle">Tatlı Dilimler</h3>
                 <div class="menu-section-grid" id="admin-sweet-slices"></div>
               </section>
 
               <section class="menu-section">
-                <h3 class="section-title">Kavanoz Tatlılar</h3>
+                <h3 class="section-title" data-i18n-key="jarTitle">Kavanoz Tatlılar</h3>
                 <div class="menu-section-grid" id="admin-jar-desserts"></div>
               </section>
 
               <div class="drinks-grid">
                 <section class="footer-column">
-                  <h3 class="column-title">Sıcak İçecekler</h3>
+                  <h3 class="column-title" data-i18n-key="hotDrinksTitle">Sıcak İçecekler</h3>
                   <div class="options-list" id="admin-hot-drinks-container"></div>
                 </section>
 
                 <section class="footer-column">
-                  <h3 class="column-title">Soğuk İçecekler</h3>
+                  <h3 class="column-title" data-i18n-key="coldDrinksTitle">Soğuk İçecekler</h3>
                   <div class="options-list" id="admin-cold-drinks-container"></div>
                 </section>
               </div>
 
               <div class="menu-footer-grid">
                 <section class="footer-column">
-                  <h3 class="column-title">İlave etmek ister misiniz?</h3>
+                  <h3 class="column-title" data-i18n-key="extrasTitle">İlave etmek ister misiniz?</h3>
                   <div class="options-list" id="admin-extras-options-container"></div>
                 </section>
 
               </div>
 
               <footer class="allergen-footer">
-                <span class="allergen-title">Alerjen Uyarısı</span>
+                <span class="allergen-title" data-i18n-key="allergenAlert">Alerjen Uyarısı</span>
                 <div class="allergen-legend" id="admin-allergen-legend-container"></div>
               </footer>
             </div>
@@ -167,9 +169,9 @@
               <label>
                 Menü bölümü
                 <select id="product-category" required>
-                  <option value="salty">Tuzlu Dilimler</option>
-                  <option value="sweet">Tatlı Dilimler</option>
-                  <option value="jar">Kavanoz Tatlılar</option>
+                  <option value="salty" data-i18n-key="saltyTitle">Tuzlu Dilimler</option>
+                  <option value="sweet" data-i18n-key="sweetTitle">Tatlı Dilimler</option>
+                  <option value="jar" data-i18n-key="jarTitle">Kavanoz Tatlılar</option>
                 </select>
               </label>
               <label>
@@ -185,8 +187,16 @@
                 <textarea id="product-ingredients" rows="3" required></textarea>
               </label>
               <label>
+                Indegridients
+                <textarea id="product-ingredients-en" rows="3"></textarea>
+              </label>
+              <label>
                 Ürün hikayesi / detay
                 <textarea id="product-story" rows="5" required></textarea>
+              </label>
+              <label>
+                Product Story / Details
+                <textarea id="product-story-en" rows="5"></textarea>
               </label>
               <label>
                 Ürün resmi
@@ -211,6 +221,10 @@
               <label>
                 Ekstra adı
                 <input type="text" id="extra-name" required>
+              </label>
+              <label>
+                Extra English
+                <input type="text" id="extra-name-en">
               </label>
               <label>
                 Fiyat
@@ -239,6 +253,10 @@
                   <option value="hot">Sıcak İçecek</option>
                   <option value="cold">Soğuk İçecek</option>
                 </select>
+              </label>
+              <label>
+                Drink Name
+                <input type="text" id="drink-name-en">
               </label>
               <label>
                 İçecek adı
