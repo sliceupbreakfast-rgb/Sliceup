@@ -64,6 +64,7 @@ create table if not exists public.menu_item_allergens (
 create table if not exists public.extras (
   id uuid primary key default gen_random_uuid(),
   name text not null,
+  extra_name text not null default '',
   price numeric(10,2) not null default 0,
   allergen_id text references public.allergens(id) on delete set null,
   sort_order integer not null default 0,
@@ -71,6 +72,9 @@ create table if not exists public.extras (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.extras
+  add column if not exists extra_name text not null default '';
 
 create table if not exists public.drinks (
   id uuid primary key default gen_random_uuid(),

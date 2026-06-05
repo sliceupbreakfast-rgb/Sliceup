@@ -166,10 +166,13 @@ const VIEW_OPTIONS_STORAGE_KEY = 'sliceup-view-options-v1';
 const LANGUAGE_STORAGE_KEY = 'sliceup-language';
 const MENU_ITEM_SELECT = 'id, category, name, ingredients, story, price, image_url, sort_order, is_active, menu_item_allergens(allergen_id)';
 const MENU_ITEM_SELECT_WITH_ENGLISH = 'id, category, name, ingredients, ingredients_english, story, story_english, price, image_url, sort_order, is_active, menu_item_allergens(allergen_id)';
+const EXTRAS_SELECT = 'id, name, price, allergen_id, sort_order, is_active';
+const EXTRAS_SELECT_WITH_ENGLISH = 'id, name, extra_name, price, allergen_id, sort_order, is_active';
 let supabaseClient = null;
 let breadPanel = structuredClone(defaultBreadPanel);
 let headerImageUrl = '';
 let supportsEnglishIngredients = true;
+let supportsEnglishExtras = true;
 let currentLanguage = 'tr';
 
 const translations = {
@@ -229,6 +232,10 @@ function isMissingEnglishIngredientsColumn(error) {
   return /ingredients_english|story_english/i.test(`${error?.message || ''} ${error?.details || ''}`);
 }
 
+function isMissingEnglishExtrasColumn(error) {
+  return /extra_name/i.test(`${error?.message || ''} ${error?.details || ''}`);
+}
+
 function mapSupabaseItem(item) {
   return normalizeMenuItem({
     id: item.id,
@@ -247,6 +254,7 @@ function mapSupabaseExtra(extra) {
   return normalizeExtraOption({
     id: extra.id,
     name: extra.name,
+    extra_name: extra.extra_name,
     price: extra.price,
     allergen: extra.allergen_id
   });
@@ -287,6 +295,7 @@ function normalizeExtraOption(option, fallback = {}) {
   return {
     id: String(option.id || fallback.id || `extra-${Date.now()}`),
     name: String(option.name ?? fallback.name ?? ''),
+    extra_name: String(option.extra_name ?? option.extraName ?? fallback.extra_name ?? fallback.extraName ?? ''),
     price: Number.isFinite(savedPrice) ? savedPrice : (fallback.price || 0),
     allergen
   };
@@ -353,14 +362,15 @@ async function loadSupabaseMenuData(client) {
     .select(select)
     .eq('is_active', true)
     .order('sort_order', { ascending: true });
+  const extrasQuery = select => client
+    .from('extras')
+    .select(select)
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true });
 
   let [itemsResponse, extrasResponse, drinksResponse] = await Promise.all([
     menuItemsQuery(MENU_ITEM_SELECT_WITH_ENGLISH),
-    client
-      .from('extras')
-      .select('id, name, price, allergen_id, sort_order, is_active')
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true }),
+    extrasQuery(EXTRAS_SELECT_WITH_ENGLISH),
     client
       .from('drinks')
       .select('id, category, name, drink_name, price, sort_order, is_active')
@@ -373,6 +383,13 @@ async function loadSupabaseMenuData(client) {
     itemsResponse = await menuItemsQuery(MENU_ITEM_SELECT);
   } else {
     supportsEnglishIngredients = true;
+  }
+
+  if (extrasResponse.error && isMissingEnglishExtrasColumn(extrasResponse.error)) {
+    supportsEnglishExtras = false;
+    extrasResponse = await extrasQuery(EXTRAS_SELECT);
+  } else {
+    supportsEnglishExtras = true;
   }
 
   if (itemsResponse.error) throw itemsResponse.error;
@@ -529,6 +546,7 @@ function setupLanguageToggle() {
       currentLanguage = currentLanguage === 'en' ? 'tr' : 'en';
       saveLanguage();
       renderMenuSections();
+      renderExtrasOptions();
       renderDrinkOptions(hotDrinks, 'hot-drinks-container');
       renderDrinkOptions(coldDrinks, 'cold-drinks-container');
       renderAllergenLegend();
@@ -548,6 +566,10 @@ function getLocalizedStory(item) {
 
 function getLocalizedDrinkName(drink) {
   return currentLanguage === 'en' ? (drink.drink_name || '') : drink.name;
+}
+
+function getLocalizedExtraName(extra) {
+  return currentLanguage === 'en' ? (extra.extra_name || extra.name) : extra.name;
 }
 
 function getLocalizedAllergenName(cfg) {
@@ -663,7 +685,7 @@ function renderExtrasOptions() {
     return `
       <div class="option-row">
         <div class="option-left">
-          <span>${escapeHTML(option.name)}</span>
+          <span>${escapeHTML(getLocalizedExtraName(option))}</span>
           ${icon}
         </div>
         <span class="option-price">${escapeHTML(formatPrice(option.price))}</span>

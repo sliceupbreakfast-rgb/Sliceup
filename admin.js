@@ -8,6 +8,8 @@ const STORAGE_BUCKET = 'menu-images';
 const HEADER_STORAGE_BUCKET = 'menu-header-images';
 const MENU_ITEM_SELECT = 'id, category, name, ingredients, story, price, image_url, sort_order, is_active, menu_item_allergens(allergen_id)';
 const MENU_ITEM_SELECT_WITH_ENGLISH = 'id, category, name, ingredients, ingredients_english, story, story_english, price, image_url, sort_order, is_active, menu_item_allergens(allergen_id)';
+const EXTRAS_SELECT = 'id, name, price, allergen_id, sort_order, is_active';
+const EXTRAS_SELECT_WITH_ENGLISH = 'id, name, extra_name, price, allergen_id, sort_order, is_active';
 
 const allergensConfig = {
   egg: { id: 'egg', name: 'Yumurta', icon: '🥚', class: 'allergen-egg', description: 'Yumurta ve yumurta ürünleri içerir.' },
@@ -69,6 +71,7 @@ let currentProductImage = '';
 let selectedHeaderImageData = '';
 let selectedHeaderImageFile = null;
 let supportsEnglishIngredients = true;
+let supportsEnglishExtras = true;
 let currentLanguage = 'tr';
 
 const translations = {
@@ -120,6 +123,10 @@ function getSupabaseClient() {
 
 function isMissingEnglishIngredientsColumn(error) {
   return /ingredients_english|story_english/i.test(`${error?.message || ''} ${error?.details || ''}`);
+}
+
+function isMissingEnglishExtrasColumn(error) {
+  return /extra_name/i.test(`${error?.message || ''} ${error?.details || ''}`);
 }
 
 function setSyncStatus(message) {
@@ -195,6 +202,7 @@ function normalizeExtra(extra) {
   return {
     id: String(extra.id || `extra-${Date.now()}`),
     name: String(extra.name || ''),
+    extra_name: String(extra.extra_name || extra.extraName || ''),
     price: Number(extra.price) || 0,
     allergen: allergensConfig[extra.allergen] ? extra.allergen : null,
     sort_order: Number.isFinite(sortOrder) ? sortOrder : 0
@@ -240,14 +248,15 @@ async function loadSupabaseData(client) {
     .select(select)
     .eq('is_active', true)
     .order('sort_order', { ascending: true });
+  const extrasQuery = select => client
+    .from('extras')
+    .select(select)
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true });
 
   let [itemsResponse, extrasResponse, drinksResponse] = await Promise.all([
     menuItemsQuery(MENU_ITEM_SELECT_WITH_ENGLISH),
-    client
-      .from('extras')
-      .select('id, name, price, allergen_id, sort_order, is_active')
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true }),
+    extrasQuery(EXTRAS_SELECT_WITH_ENGLISH),
     client
       .from('drinks')
       .select('id, category, name, drink_name, price, sort_order, is_active')
@@ -260,6 +269,13 @@ async function loadSupabaseData(client) {
     itemsResponse = await menuItemsQuery(MENU_ITEM_SELECT);
   } else {
     supportsEnglishIngredients = true;
+  }
+
+  if (extrasResponse.error && isMissingEnglishExtrasColumn(extrasResponse.error)) {
+    supportsEnglishExtras = false;
+    extrasResponse = await extrasQuery(EXTRAS_SELECT);
+  } else {
+    supportsEnglishExtras = true;
   }
 
   if (itemsResponse.error) throw itemsResponse.error;
@@ -281,6 +297,7 @@ async function loadSupabaseData(client) {
   menuData.extrasOptions = extrasResponse.data.map(extra => normalizeExtra({
     id: extra.id,
     name: extra.name,
+    extra_name: extra.extra_name,
     price: extra.price,
     allergen: extra.allergen_id,
     sort_order: extra.sort_order
@@ -353,9 +370,12 @@ async function loadData() {
   if (client) {
     try {
       await loadSupabaseData(client);
-      setSyncStatus(supportsEnglishIngredients
+      const missingEnglishColumns = [];
+      if (!supportsEnglishIngredients) missingEnglishColumns.push('ingredients_english veya story_english');
+      if (!supportsEnglishExtras) missingEnglishColumns.push('extra_name');
+      setSyncStatus(missingEnglishColumns.length === 0
         ? 'Supabase bağlı: veriler canlı veritabanından geliyor.'
-        : 'Supabase bağlı: ingredients_english veya story_english kolonu olmadığı için İngilizce alanlar canlı veritabanına kaydedilmez.');
+        : `Supabase bağlı: ${missingEnglishColumns.join(', ')} kolonu olmadığı için ilgili İngilizce alanlar canlı veritabanına kaydedilmez.`);
       await Promise.allSettled([
         loadSupabaseViewOptions(client),
         loadSupabaseHeaderImage(client)
@@ -429,6 +449,10 @@ function setupLanguageToggle() {
 
 function getLocalizedDrinkName(drink) {
   return currentLanguage === 'en' ? (drink.drink_name || '') : drink.name;
+}
+
+function getLocalizedExtraName(extra) {
+  return currentLanguage === 'en' ? (extra.extra_name || extra.name) : extra.name;
 }
 
 function getLocalizedAllergenName(cfg) {
@@ -547,7 +571,7 @@ function renderExtras() {
     <div class="option-row admin-extra-row" data-id="${escapeHTML(extra.id)}" draggable="true">
       <span class="admin-drag-handle" title="Sürükleyerek sırala">Sırala</span>
       <div class="option-left">
-        <span>${escapeHTML(extra.name)}</span>
+        <span>${escapeHTML(getLocalizedExtraName(extra))}</span>
         ${extra.allergen ? getAllergenBadgeHTML(extra.allergen) : ''}
       </div>
       <span class="option-price">${escapeHTML(formatPrice(extra.price))}</span>
@@ -674,6 +698,7 @@ function resetExtraForm() {
   document.getElementById('extra-form-title').textContent = 'Yeni Ekstra';
   document.getElementById('extra-form').reset();
   document.getElementById('extra-id').value = '';
+  document.getElementById('extra-name-en').value = '';
 }
 
 function resetDrinkForm() {
@@ -768,6 +793,7 @@ function fillExtraForm(extra) {
   document.getElementById('extra-form-title').textContent = `${extra.name} Düzenle`;
   document.getElementById('extra-id').value = extra.id;
   document.getElementById('extra-name').value = extra.name;
+  document.getElementById('extra-name-en').value = extra.extra_name || '';
   document.getElementById('extra-price').value = extra.price;
   document.getElementById('extra-allergen').value = extra.allergen || '';
   showItemEditorCard('extra-editor-card');
@@ -1015,6 +1041,7 @@ async function saveExtra() {
   const extra = {
     id: id || `extra-${Date.now()}`,
     name: document.getElementById('extra-name').value.trim(),
+    extra_name: document.getElementById('extra-name-en').value.trim(),
     price: Number(document.getElementById('extra-price').value) || 0,
     allergen: document.getElementById('extra-allergen').value || null,
     sort_order: existingExtra?.sort_order || (oldIndex >= 0 ? oldIndex + 1 : menuData.extrasOptions.length + 1)
@@ -1027,11 +1054,20 @@ async function saveExtra() {
       allergen_id: extra.allergen,
       is_active: true
     };
+    payload.extra_name = extra.extra_name;
     if (!id) payload.sort_order = menuData.extrasOptions.length + 1;
 
-    const response = id
-      ? await client.from('extras').update(payload).eq('id', id)
-      : await client.from('extras').insert(payload);
+    let response = id
+      ? await client.from('extras').update(payload).eq('id', id).select('id').single()
+      : await client.from('extras').insert(payload).select('id').single();
+
+    if (response.error && isMissingEnglishExtrasColumn(response.error)) {
+      supportsEnglishExtras = false;
+      delete payload.extra_name;
+      response = id
+        ? await client.from('extras').update(payload).eq('id', id).select('id').single()
+        : await client.from('extras').insert(payload).select('id').single();
+    }
 
     if (response.error) throw response.error;
   } else {
