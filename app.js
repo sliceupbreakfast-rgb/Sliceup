@@ -508,7 +508,6 @@ function loadViewOptions() {
     const savedOptions = JSON.parse(localStorage.getItem(VIEW_OPTIONS_STORAGE_KEY));
     if (!savedOptions) return;
 
-    if (typeof savedOptions.showImages === 'boolean') viewOptions.showImages = savedOptions.showImages;
     if (typeof savedOptions.showBread === 'boolean') viewOptions.showBread = savedOptions.showBread;
   } catch (error) {
     localStorage.removeItem(VIEW_OPTIONS_STORAGE_KEY);
@@ -614,6 +613,7 @@ function setupViewOptionSync() {
   window.addEventListener('storage', event => {
     if (event.key === VIEW_OPTIONS_STORAGE_KEY) {
       loadViewOptions();
+      viewOptions.showImages = false;
       applyViewOptions();
       return;
     }
