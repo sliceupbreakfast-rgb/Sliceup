@@ -24,6 +24,7 @@ create table if not exists public.menu_items (
   story text not null default '',
   story_english text not null default '',
   price numeric(10,2) not null default 0,
+  calories integer,
   image_url text,
   sort_order integer not null default 0,
   is_active boolean not null default true,
@@ -37,6 +38,23 @@ alter table public.menu_items
 alter table public.menu_items
   add column if not exists ingredients_english text not null default '',
   add column if not exists story_english text not null default '';
+
+alter table public.menu_items
+  add column if not exists calories integer;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'menu_items_calories_nonnegative_check'
+      and conrelid = 'public.menu_items'::regclass
+  ) then
+    alter table public.menu_items
+      add constraint menu_items_calories_nonnegative_check check (calories is null or calories >= 0);
+  end if;
+end;
+$$;
 
 do $$
 begin

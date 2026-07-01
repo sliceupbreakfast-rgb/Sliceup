@@ -6,8 +6,8 @@ const ADMIN_USERNAME = 'admin';
 const ADMIN_PASSWORD = 'admin123';
 const STORAGE_BUCKET = 'menu-images';
 const HEADER_STORAGE_BUCKET = 'menu-header-images';
-const MENU_ITEM_SELECT = 'id, category, name, ingredients, story, price, image_url, sort_order, is_active, menu_item_allergens(allergen_id)';
-const MENU_ITEM_SELECT_WITH_ENGLISH = 'id, category, name, ingredients, ingredients_english, story, story_english, price, image_url, sort_order, is_active, menu_item_allergens(allergen_id)';
+const MENU_ITEM_SELECT = '*, menu_item_allergens(allergen_id)';
+const MENU_ITEM_SELECT_WITH_ENGLISH = MENU_ITEM_SELECT;
 const EXTRAS_SELECT = 'id, name, price, allergen_id, sort_order, is_active';
 const EXTRAS_SELECT_WITH_ENGLISH = 'id, name, extra_name, price, allergen_id, sort_order, is_active';
 
@@ -72,6 +72,7 @@ let selectedHeaderImageData = '';
 let selectedHeaderImageFile = null;
 let supportsEnglishIngredients = true;
 let supportsEnglishExtras = true;
+let supportsCalories = true;
 let currentLanguage = 'tr';
 
 const translations = {
@@ -82,7 +83,7 @@ const translations = {
   extrasTitle: { tr: 'İlave etmek ister misiniz?', en: 'Would you like to add anything?' },
   hotDrinksTitle: { tr: 'Sıcak İçecekler', en: 'Hot Drinks' },
   coldDrinksTitle: { tr: 'Soğuk İçecekler', en: 'Cold Drinks' },
-  allergenAlert: { tr: 'Alerjen Uyarısı', en: 'Allergen Alert' }
+  allergenAlert: { tr: 'Alerjen ve Kalori Bilgisi', en: 'Allergen and Calorie Info' }
 };
 
 const allergenNameTranslations = {
@@ -112,6 +113,15 @@ function formatPrice(price) {
   return `${String(price ?? '').replace(/\s*₺\s*$/, '')} ₺`;
 }
 
+function normalizeCalories(value) {
+  const calories = Number(value);
+  return Number.isFinite(calories) && calories > 0 ? Math.round(calories) : null;
+}
+
+function formatCalories(calories) {
+  return calories ? `${calories} kcal` : (currentLanguage === 'en' ? 'Calories: -' : 'Kalori: -');
+}
+
 function getSupabaseClient() {
   const config = window.SLICEUP_SUPABASE_CONFIG || {};
   const hasConfig = config.url && config.anonKey && !config.url.includes('YOUR_SUPABASE') && !config.anonKey.includes('YOUR_SUPABASE');
@@ -127,6 +137,10 @@ function isMissingEnglishIngredientsColumn(error) {
 
 function isMissingEnglishExtrasColumn(error) {
   return /extra_name/i.test(`${error?.message || ''} ${error?.details || ''}`);
+}
+
+function isMissingCaloriesColumn(error) {
+  return /calories/i.test(`${error?.message || ''} ${error?.details || ''}`);
 }
 
 function setSyncStatus(message) {
@@ -179,6 +193,10 @@ function getAllergenBadgeHTML(allergenId) {
   return `<span class="allergen-badge ${cfg.class}" title="${escapeHTML(cfg.name)}: ${escapeHTML(cfg.description)}">${escapeHTML(cfg.icon)}</span>`;
 }
 
+function getCalorieBadgeHTML(calories) {
+  return `<span class="calorie-badge" title="${escapeHTML(currentLanguage === 'en' ? 'Calorie information' : 'Kalori bilgisi')}">${escapeHTML(formatCalories(calories))}</span>`;
+}
+
 function normalizeItem(item) {
   const sortOrder = Number(item.sort_order);
 
@@ -190,6 +208,7 @@ function normalizeItem(item) {
     story: String(item.story || ''),
     story_english: String(item.story_english || item.storyEnglish || ''),
     price: Number(item.price) || 0,
+    calories: normalizeCalories(item.calories),
     allergens: Array.isArray(item.allergens) ? item.allergens.filter(id => allergensConfig[id]) : [],
     image: item.image || item.image_url || '',
     sort_order: Number.isFinite(sortOrder) ? sortOrder : 0
@@ -552,7 +571,10 @@ function renderMenuSection(items, containerId, category) {
             <p class="menu-item-ingredients">${escapeHTML(item.ingredients)}</p>
             ${ingredientsEnHTML}
           </div>
-          <div class="menu-item-allergens">${(item.allergens || []).map(getAllergenBadgeHTML).join(' ')}</div>
+          <div class="menu-item-meta">
+            ${getCalorieBadgeHTML(item.calories)}
+            <div class="menu-item-allergens">${(item.allergens || []).map(getAllergenBadgeHTML).join(' ')}</div>
+          </div>
         </div>
         <div class="admin-inline-actions">
           <button type="button" data-action="edit-product">Düzenle</button>
@@ -650,7 +672,12 @@ function renderAllergenLegend() {
       <span class="legend-icon">${escapeHTML(cfg.icon)}</span>
       <span class="legend-text">${escapeHTML(getLocalizedAllergenName(cfg))}</span>
     </div>
-  `).join('');
+  `).join('') + `
+    <div class="legend-item" title="${escapeHTML(currentLanguage === 'en' ? 'Shown next to each product as kcal.' : 'Her ürünün yanında kcal olarak gösterilir.')}">
+      <span class="calorie-badge calorie-badge-legend">${escapeHTML(currentLanguage === 'en' ? 'Calories' : 'Kalori')}</span>
+      <span class="legend-text">kcal</span>
+    </div>
+  `;
 }
 
 function renderPreview() {
@@ -771,6 +798,7 @@ function fillProductForm(item, category) {
   document.getElementById('product-category').value = category;
   document.getElementById('product-name').value = item.name;
   document.getElementById('product-price').value = item.price;
+  document.getElementById('product-calories').value = item.calories || '';
   document.getElementById('product-ingredients').value = item.ingredients;
   document.getElementById('product-ingredients-en').value = item.ingredients_en || '';
   document.getElementById('product-story').value = item.story;
@@ -959,6 +987,7 @@ async function saveProduct() {
     id: id || `${category}-${Date.now()}`,
     name: document.getElementById('product-name').value.trim(),
     price: Number(document.getElementById('product-price').value) || 0,
+    calories: normalizeCalories(document.getElementById('product-calories').value),
     ingredients: document.getElementById('product-ingredients').value.trim(),
     ingredients_en: document.getElementById('product-ingredients-en').value.trim(),
     story: document.getElementById('product-story').value.trim(),
@@ -974,6 +1003,7 @@ async function saveProduct() {
       category,
       name: item.name,
       price: item.price,
+      calories: item.calories,
       ingredients: item.ingredients,
       story: item.story,
       image_url: imageUrl,
@@ -993,6 +1023,11 @@ async function saveProduct() {
         delete payload.story_english;
         updateResponse = await client.from('menu_items').update(payload).eq('id', id);
       }
+      if (updateResponse.error && supportsCalories && isMissingCaloriesColumn(updateResponse.error)) {
+        supportsCalories = false;
+        delete payload.calories;
+        updateResponse = await client.from('menu_items').update(payload).eq('id', id);
+      }
       if (updateResponse.error) throw updateResponse.error;
     } else {
       payload.sort_order = menuData[newCategoryKey].length + 1;
@@ -1001,6 +1036,11 @@ async function saveProduct() {
         supportsEnglishIngredients = false;
         delete payload.ingredients_english;
         delete payload.story_english;
+        insertResponse = await client.from('menu_items').insert(payload).select('id').single();
+      }
+      if (insertResponse.error && supportsCalories && isMissingCaloriesColumn(insertResponse.error)) {
+        supportsCalories = false;
+        delete payload.calories;
         insertResponse = await client.from('menu_items').insert(payload).select('id').single();
       }
       if (insertResponse.error) throw insertResponse.error;

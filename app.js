@@ -164,8 +164,8 @@ const defaultBreadPanel = {
 const MENU_STORAGE_KEY = 'sliceup-menu-data-v1';
 const VIEW_OPTIONS_STORAGE_KEY = 'sliceup-view-options-v1';
 const LANGUAGE_STORAGE_KEY = 'sliceup-language';
-const MENU_ITEM_SELECT = 'id, category, name, ingredients, story, price, image_url, sort_order, is_active, menu_item_allergens(allergen_id)';
-const MENU_ITEM_SELECT_WITH_ENGLISH = 'id, category, name, ingredients, ingredients_english, story, story_english, price, image_url, sort_order, is_active, menu_item_allergens(allergen_id)';
+const MENU_ITEM_SELECT = '*, menu_item_allergens(allergen_id)';
+const MENU_ITEM_SELECT_WITH_ENGLISH = MENU_ITEM_SELECT;
 const EXTRAS_SELECT = 'id, name, price, allergen_id, sort_order, is_active';
 const EXTRAS_SELECT_WITH_ENGLISH = 'id, name, extra_name, price, allergen_id, sort_order, is_active';
 let supabaseClient = null;
@@ -183,7 +183,7 @@ const translations = {
   extrasTitle: { tr: 'İlave etmek ister misiniz?', en: 'Would you like to add anything?' },
   hotDrinksTitle: { tr: 'Sıcak İçecekler', en: 'Hot Drinks' },
   coldDrinksTitle: { tr: 'Soğuk İçecekler', en: 'Cold Drinks' },
-  allergenAlert: { tr: 'Alerjen Uyarısı', en: 'Allergen Alert' },
+  allergenAlert: { tr: 'Kalori ve Alerjen Bilgisi', en: 'Calorie and Allergen Info' },
   storyHeading: { tr: 'Hikayemiz:', en: 'Product Story / Details' },
   ingredientsHeading: { tr: 'İçindekiler:', en: 'Indegridients:' }
 };
@@ -213,6 +213,15 @@ function escapeHTML(value) {
 
 function formatPrice(price) {
   return `${String(price ?? '').replace(/\s*₺\s*$/, '')} ₺`;
+}
+
+function normalizeCalories(value, fallbackValue = null) {
+  const calories = Number(value ?? fallbackValue);
+  return Number.isFinite(calories) && calories > 0 ? Math.round(calories) : null;
+}
+
+function formatCalories(calories) {
+  return calories ? `${calories} kcal` : (currentLanguage === 'en' ? 'Calories: -' : 'Kalori: -');
 }
 
 function getAllMenuItems() {
@@ -245,6 +254,7 @@ function mapSupabaseItem(item) {
     story: item.story,
     story_english: item.story_english,
     price: item.price,
+    calories: item.calories,
     image: item.image_url || '',
     allergens: (item.menu_item_allergens || []).map(row => row.allergen_id)
   });
@@ -283,6 +293,7 @@ function normalizeMenuItem(item, fallback = {}) {
     story: String(item.story ?? fallback.story ?? ''),
     story_english: String(item.story_english ?? item.storyEnglish ?? fallback.story_english ?? fallback.storyEnglish ?? ''),
     price: Number.isFinite(savedPrice) ? savedPrice : (fallback.price || 0),
+    calories: normalizeCalories(item.calories, fallback.calories),
     allergens,
     image: item.image || fallback.image || ''
   };
@@ -638,6 +649,10 @@ function getAllergenBadgeHTML(allergenId) {
   return `<span class="allergen-badge ${cfg.class}" title="${escapeHTML(cfg.name)}: ${escapeHTML(cfg.description)}">${escapeHTML(cfg.icon)}</span>`;
 }
 
+function getCalorieBadgeHTML(calories) {
+  return `<span class="calorie-badge" title="${escapeHTML(currentLanguage === 'en' ? 'Calorie information' : 'Kalori bilgisi')}">${escapeHTML(formatCalories(calories))}</span>`;
+}
+
 // Render Menu Section
 function renderMenuSection(items, containerId) {
   const container = document.getElementById(containerId);
@@ -645,6 +660,7 @@ function renderMenuSection(items, containerId) {
 
   container.innerHTML = items.map(item => {
     const allergenBadges = (item.allergens || []).map(getAllergenBadgeHTML).join(' ');
+    const calorieBadge = getCalorieBadgeHTML(item.calories);
     const ingredients = getLocalizedIngredients(item);
     const ingredientsClass = currentLanguage === 'en' ? 'menu-item-ingredients menu-item-ingredients-en' : 'menu-item-ingredients';
     const imageHTML = item.image
@@ -662,7 +678,10 @@ function renderMenuSection(items, containerId) {
           <div class="menu-item-ingredients-group">
             <p class="${ingredientsClass}">${escapeHTML(ingredients)}</p>
           </div>
-          <div class="menu-item-allergens">${allergenBadges}</div>
+          <div class="menu-item-meta">
+            ${calorieBadge}
+            <div class="menu-item-allergens">${allergenBadges}</div>
+          </div>
         </div>
       </div>
     `;
@@ -734,7 +753,14 @@ function renderAllergenLegend() {
   const container = document.getElementById('allergen-legend-container');
   if (!container) return;
 
-  container.innerHTML = Object.values(allergensConfig).map(cfg => `
+  const calorieLegend = `
+    <div class="legend-item" title="${escapeHTML(currentLanguage === 'en' ? 'Shown next to each product as kcal.' : 'Her ürünün yanında kcal olarak gösterilir.')}">
+      <span class="calorie-badge calorie-badge-legend">${escapeHTML(currentLanguage === 'en' ? 'Calories' : 'Kalori')}</span>
+      <span class="legend-text">kcal</span>
+    </div>
+  `;
+
+  container.innerHTML = calorieLegend + Object.values(allergensConfig).map(cfg => `
     <div class="legend-item" title="${escapeHTML(cfg.description)}">
       <span class="legend-icon">${escapeHTML(cfg.icon)}</span>
       <span class="legend-text">${escapeHTML(getLocalizedAllergenName(cfg))}</span>
@@ -769,8 +795,9 @@ function openItemModal(itemId) {
   
   // Render allergens in modal
   if (item.allergens && item.allergens.length > 0) {
+    const allergenTitle = currentLanguage === 'en' ? 'Allergjen Alert' : 'Alerjen Bilgisi';
     modalAllergens.innerHTML = `
-      <h5>Alerjen Bilgisi:</h5>
+      <h5>${escapeHTML(allergenTitle)}:</h5>
       <div class="modal-allergens-list">
         ${item.allergens.map(aId => {
           const cfg = allergensConfig[aId];
