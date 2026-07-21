@@ -73,6 +73,7 @@ let selectedHeaderImageFile = null;
 let supportsEnglishIngredients = true;
 let supportsEnglishExtras = true;
 let supportsCalories = true;
+let supportsMenuSettings = true;
 let currentLanguage = 'tr';
 
 const translations = {
@@ -96,7 +97,8 @@ const allergenNameTranslations = {
 
 const viewOptions = {
   showImages: false,
-  showBread: true
+  showBread: true,
+  showJarDesserts: true
 };
 
 function escapeHTML(value) {
@@ -365,6 +367,24 @@ async function loadSupabaseViewOptions(client) {
   saveViewOptions();
 }
 
+async function loadSupabaseMenuSettings(client) {
+  const response = await client
+    .from('menu_settings')
+    .select('show_jar_desserts')
+    .eq('id', true)
+    .maybeSingle();
+
+  if (response.error) {
+    supportsMenuSettings = false;
+    console.warn('Menü görünürlük ayarları yüklenemedi:', response.error.message);
+    return;
+  }
+
+  supportsMenuSettings = true;
+  if (response.data) viewOptions.showJarDesserts = response.data.show_jar_desserts !== false;
+  saveViewOptions();
+}
+
 function loadLocalData() {
   try {
     const stored = JSON.parse(localStorage.getItem(MENU_STORAGE_KEY));
@@ -397,6 +417,7 @@ async function loadData() {
         : `Supabase bağlı: ${missingEnglishColumns.join(', ')} kolonu olmadığı için ilgili İngilizce alanlar canlı veritabanına kaydedilmez.`);
       await Promise.allSettled([
         loadSupabaseViewOptions(client),
+        loadSupabaseMenuSettings(client),
         loadSupabaseHeaderImage(client)
       ]);
       return;
@@ -425,6 +446,7 @@ function loadViewOptions() {
 
     if (typeof savedOptions.showImages === 'boolean') viewOptions.showImages = savedOptions.showImages;
     if (typeof savedOptions.showBread === 'boolean') viewOptions.showBread = savedOptions.showBread;
+    if (typeof savedOptions.showJarDesserts === 'boolean') viewOptions.showJarDesserts = savedOptions.showJarDesserts;
   } catch (error) {
     localStorage.removeItem(VIEW_OPTIONS_STORAGE_KEY);
   }
@@ -496,6 +518,21 @@ async function saveSupabaseBreadVisibility() {
   if (response.error) throw response.error;
 }
 
+async function saveJarDessertsVisibility() {
+  const client = getSupabaseClient();
+  if (!client || !supportsMenuSettings) {
+    saveViewOptions();
+    return;
+  }
+
+  const response = await client
+    .from('menu_settings')
+    .upsert({ id: true, show_jar_desserts: viewOptions.showJarDesserts }, { onConflict: 'id' });
+
+  if (response.error) throw response.error;
+  saveViewOptions();
+}
+
 function applyViewOptions() {
   document.body.classList.toggle('menu-images-hidden', !viewOptions.showImages);
 
@@ -504,6 +541,12 @@ function applyViewOptions() {
 
   const breadToggle = document.getElementById('toggle-bread-section');
   if (breadToggle) breadToggle.checked = viewOptions.showBread;
+
+  const jarToggle = document.getElementById('toggle-jar-desserts');
+  if (jarToggle) jarToggle.checked = viewOptions.showJarDesserts;
+
+  const jarStatus = document.getElementById('admin-jar-visibility-status');
+  if (jarStatus) jarStatus.hidden = viewOptions.showJarDesserts;
 
   const breadSection = document.getElementById('bread-section');
   if (breadSection) {
@@ -531,6 +574,7 @@ function updateHeaderImagePreview() {
 function setupViewControls() {
   const imagesToggle = document.getElementById('toggle-menu-images');
   const breadToggle = document.getElementById('toggle-bread-section');
+  const jarToggle = document.getElementById('toggle-jar-desserts');
 
   if (imagesToggle) {
     imagesToggle.addEventListener('change', () => {
@@ -544,6 +588,23 @@ function setupViewControls() {
     breadToggle.addEventListener('change', async () => {
       if (breadToggle.checked === viewOptions.showBread) return;
       await toggleBreadPanelVisibility();
+    });
+  }
+
+  if (jarToggle) {
+    jarToggle.addEventListener('change', async () => {
+      const previousValue = viewOptions.showJarDesserts;
+      viewOptions.showJarDesserts = jarToggle.checked;
+      applyViewOptions();
+
+      try {
+        await saveJarDessertsVisibility();
+      } catch (error) {
+        viewOptions.showJarDesserts = previousValue;
+        applyViewOptions();
+        saveViewOptions();
+        alert(`Kavanoz Tatlılar görünürlük ayarı kaydedilemedi: ${error.message}`);
+      }
     });
   }
 }

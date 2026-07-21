@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,700;1,400;1,600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=calorie-badge-20260629">
+  <link rel="stylesheet" href="style.css?v=pdf-allergens-20260721">
 </head>
 <body class="admin-page">
   <main class="admin-shell admin-shell-wide">
@@ -46,6 +46,11 @@
               <input type="checkbox" id="toggle-menu-images">
               <span class="switch-slider" aria-hidden="true"></span>
             </label>
+            <label class="menu-switch">
+              <span>Kavanoz Tatlılar</span>
+              <input type="checkbox" id="toggle-jar-desserts">
+              <span class="switch-slider" aria-hidden="true"></span>
+            </label>
           </div>
           <button type="button" id="header-image-button" class="admin-outline-button admin-panel-toggle-button">Üst Menü Görseli</button>
           <button type="button" id="new-product-button" class="admin-outline-button admin-panel-toggle-button">Yeni Ürün</button>
@@ -75,8 +80,9 @@
                 <div class="menu-section-grid" id="admin-sweet-slices"></div>
               </section>
 
-              <section class="menu-section">
+              <section class="menu-section" id="admin-section-jar-desserts">
                 <h3 class="section-title" data-i18n-key="jarTitle">Kavanoz Tatlılar</h3>
+                <p class="admin-section-visibility-status" id="admin-jar-visibility-status" hidden>Bu bölüm menüde ve PDF'te gizli.</p>
                 <div class="menu-section-grid" id="admin-jar-desserts"></div>
               </section>
 
@@ -283,6 +289,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
-  <script src="admin.js?v=calorie-badge-20260629"></script>
+  <script src="admin.js?v=jar-visibility-20260721"></script>
 </body>
 </html>

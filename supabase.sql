@@ -136,6 +136,18 @@ create table if not exists public.menu_header (
   constraint menu_header_single_row check (id = true)
 );
 
+create table if not exists public.menu_settings (
+  id boolean primary key default true,
+  show_jar_desserts boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint menu_settings_single_row check (id = true)
+);
+
+insert into public.menu_settings (id, show_jar_desserts)
+values (true, true)
+on conflict (id) do nothing;
+
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
@@ -181,6 +193,11 @@ create trigger menu_header_set_updated_at
 before update on public.menu_header
 for each row execute function public.set_updated_at();
 
+drop trigger if exists menu_settings_set_updated_at on public.menu_settings;
+create trigger menu_settings_set_updated_at
+before update on public.menu_settings
+for each row execute function public.set_updated_at();
+
 insert into storage.buckets (id, name, public)
 values ('menu-images', 'menu-images', true)
 on conflict (id) do update set public = excluded.public;
@@ -197,6 +214,7 @@ alter table public.drinks enable row level security;
 alter table public.bread_panel enable row level security;
 alter table public.bread_panel_items enable row level security;
 alter table public.menu_header enable row level security;
+alter table public.menu_settings enable row level security;
 
 drop policy if exists "Public read allergens" on public.allergens;
 create policy "Public read allergens" on public.allergens for select using (true);
@@ -245,6 +263,12 @@ create policy "Public read active menu header" on public.menu_header for select 
 
 drop policy if exists "Authenticated manage menu header" on public.menu_header;
 create policy "Authenticated manage menu header" on public.menu_header for all to authenticated using (true) with check (true);
+
+drop policy if exists "Public read menu settings" on public.menu_settings;
+create policy "Public read menu settings" on public.menu_settings for select using (true);
+
+drop policy if exists "Authenticated manage menu settings" on public.menu_settings;
+create policy "Authenticated manage menu settings" on public.menu_settings for all to authenticated using (true) with check (true);
 
 drop policy if exists "Public read menu images" on storage.objects;
 create policy "Public read menu images" on storage.objects for select using (bucket_id = 'menu-images');

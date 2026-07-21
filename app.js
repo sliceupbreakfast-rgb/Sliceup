@@ -198,7 +198,8 @@ const allergenNameTranslations = {
 
 const viewOptions = {
   showImages: false,
-  showBread: true
+  showBread: true,
+  showJarDesserts: true
 };
 
 function escapeHTML(value) {
@@ -442,6 +443,22 @@ async function loadSupabaseViewOptions(client) {
   saveViewOptions();
 }
 
+async function loadSupabaseMenuSettings(client) {
+  const response = await client
+    .from('menu_settings')
+    .select('show_jar_desserts')
+    .eq('id', true)
+    .maybeSingle();
+
+  if (response.error) {
+    console.warn('Menü görünürlük ayarları yüklenemedi:', response.error.message);
+    return;
+  }
+
+  if (response.data) viewOptions.showJarDesserts = response.data.show_jar_desserts !== false;
+  saveViewOptions();
+}
+
 async function loadSupabaseHeaderImage(client) {
   const response = await client
     .from('menu_header')
@@ -472,6 +489,7 @@ async function loadMenuData() {
     if (supabaseMenuLoaded) {
       await Promise.allSettled([
         loadSupabaseViewOptions(client),
+        loadSupabaseMenuSettings(client),
         loadSupabaseHeaderImage(client)
       ]);
       return;
@@ -520,6 +538,7 @@ function loadViewOptions() {
     if (!savedOptions) return;
 
     if (typeof savedOptions.showBread === 'boolean') viewOptions.showBread = savedOptions.showBread;
+    if (typeof savedOptions.showJarDesserts === 'boolean') viewOptions.showJarDesserts = savedOptions.showJarDesserts;
   } catch (error) {
     localStorage.removeItem(VIEW_OPTIONS_STORAGE_KEY);
   }
@@ -597,6 +616,9 @@ function applyViewOptions() {
 
   const breadSection = document.getElementById('bread-section');
   if (breadSection) breadSection.hidden = !viewOptions.showBread;
+
+  const jarSection = document.getElementById('section-jar-desserts');
+  if (jarSection) jarSection.hidden = !viewOptions.showJarDesserts;
 }
 
 function setupViewControls() {

@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,700;1,400;1,600&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="style.css?v=calorie-badge-20260629">
+  <link rel="stylesheet" href="style.css?v=pdf-allergens-20260721">
 </head>
 <body class="menu-images-hidden">
 
@@ -63,36 +63,38 @@
 
         </div>
 
-        <section class="menu-section section-with-divider" id="section-jar-desserts">
-          <h3 class="section-title" data-i18n-key="jarTitle">Kavanoz Tatlılar</h3>
-          <div class="menu-section-grid" id="jar-desserts">
-            <!-- Dynamically populated via JS -->
+        <div id="print-page-three">
+          <section class="menu-section section-with-divider" id="section-jar-desserts">
+            <h3 class="section-title" data-i18n-key="jarTitle">Kavanoz Tatlılar</h3>
+            <div class="menu-section-grid" id="jar-desserts">
+              <!-- Dynamically populated via JS -->
+            </div>
+          </section>
+
+          <div class="drinks-grid" id="section-drinks">
+            <section class="footer-column">
+              <h3 class="column-title" data-i18n-key="hotDrinksTitle">Sıcak İçecekler</h3>
+              <div class="options-list" id="hot-drinks-container">
+                <!-- Dynamically populated via JS -->
+              </div>
+            </section>
+
+            <section class="footer-column">
+              <h3 class="column-title" data-i18n-key="coldDrinksTitle">Soğuk İçecekler</h3>
+              <div class="options-list" id="cold-drinks-container">
+                <!-- Dynamically populated via JS -->
+              </div>
+            </section>
           </div>
-        </section>
 
-        <div class="drinks-grid" id="section-drinks">
-          <section class="footer-column">
-            <h3 class="column-title" data-i18n-key="hotDrinksTitle">Sıcak İçecekler</h3>
-            <div class="options-list" id="hot-drinks-container">
+          <!-- Allergen Legend Footer -->
+          <footer class="allergen-footer">
+            <span class="allergen-title" data-i18n-key="allergenAlert">Alerjen Uyarısı</span>
+            <div class="allergen-legend" id="allergen-legend-container">
               <!-- Dynamically populated via JS -->
             </div>
-          </section>
-
-          <section class="footer-column">
-            <h3 class="column-title" data-i18n-key="coldDrinksTitle">Soğuk İçecekler</h3>
-            <div class="options-list" id="cold-drinks-container">
-              <!-- Dynamically populated via JS -->
-            </div>
-          </section>
+          </footer>
         </div>
-
-        <!-- Allergen Legend Footer -->
-        <footer class="allergen-footer">
-          <span class="allergen-title" data-i18n-key="allergenAlert">Alerjen Uyarısı</span>
-          <div class="allergen-legend" id="allergen-legend-container">
-            <!-- Dynamically populated via JS -->
-          </div>
-        </footer>
 
       </div>
     </main>
@@ -132,6 +134,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js"></script>
-  <script src="app.js?v=calorie-badge-20260629"></script>
+  <script src="app.js?v=jar-visibility-20260721"></script>
 </body>
 </html>

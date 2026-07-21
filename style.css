@@ -1337,6 +1337,17 @@ body {
   padding: 4px 9px;
 }
 
+.admin-section-visibility-status {
+  border: 1px dashed rgba(180, 35, 24, 0.35);
+  border-radius: 8px;
+  background-color: rgba(180, 35, 24, 0.08);
+  color: #b42318;
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin: -2px 0 12px;
+  padding: 7px 10px;
+}
+
 .admin-extra-row,
 .admin-drink-row {
   display: grid;
@@ -1624,6 +1635,10 @@ body {
    ========================================================================== */
 
 @media print {
+  #section-jar-desserts[hidden] {
+    display: none !important;
+  }
+
   /* Setup page margins for full border-less background */
   @page {
     size: A4 portrait;
@@ -1688,11 +1703,20 @@ body {
   }
 
   /* Force Page Breaks */
-  #section-sweet-slices,
-  #section-jar-desserts {
+  #section-sweet-slices {
     break-before: page;
     page-break-before: always;
     padding-top: 68mm !important;
+  }
+
+  #print-page-three {
+    break-before: page;
+    page-break-before: always;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    min-height: 297mm;
+    padding: 68mm 0 10mm;
   }
 
   .menu-header::before,
@@ -1702,7 +1726,7 @@ body {
   }
 
   .menu-content {
-    padding: 68mm 30px 20px 30px !important;
+    padding: 68mm 30px 0 !important;
     display: block !important;
     background-color: var(--color-white) !important;
   }
@@ -1765,11 +1789,16 @@ body {
 
   .drinks-grid {
     display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
+    grid-template-columns: 1fr !important;
     margin-top: 15px !important;
     padding-top: 15px !important;
     margin-bottom: 10px !important;
-    gap: 24px !important;
+    gap: 18px !important;
+  }
+
+  .drinks-grid .footer-column {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   .column-title {
@@ -1819,6 +1848,9 @@ body {
   }
 
   .allergen-footer {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-top: auto !important;
     padding-top: 15px !important;
   }
 
